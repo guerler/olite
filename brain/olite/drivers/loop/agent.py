@@ -1,0 +1,77 @@
+"""The loop driver: olite's open-ended agent loop (Orbit parity)."""
+
+import json
+import logging
+
+from .tools import ToolSurface
+
+logger = logging.getLogger(__name__)
+
+MAX_STEPS = 12
+MAX_TOOL_RESULT = 2000
+
+
+class LoopDriver:
+    def __init__(self, substrate, processes=None):
+        self.substrate = substrate
+        self.tools = ToolSurface(substrate, processes)
+
+    async def run(self, transcripts):
+        messages = [dict(m) for m in transcripts]
+        logs = []
+        done = False
+
+        for _ in range(MAX_STEPS):
+            reply = await self.substrate.llm.complete(messages, tools=self.tools.schemas())
+            message = reply.get("choices", [{}])[0].get("message", {})
+            tool_calls = message.get("tool_calls") or []
+
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": message.get("content") or "",
+                    "tool_calls": tool_calls,
+                }
+            )
+
+            if not tool_calls:
+                if message.get("content"):
+                    logs.append(f"assistant: {message['content']}")
+                break
+
+            for call in tool_calls:
+                fn = call.get("function", {})
+                name = fn.get("name")
+                try:
+                    args = json.loads(fn.get("arguments") or "{}")
+                except json.JSONDecodeError:
+                    args = {}
+
+                logs.append(f"call {name}({_brief(args)})")
+                result = await self.tools.dispatch(name, args)
+                logs.append(f"  -> {_brief(result)}")
+
+                content = result if isinstance(result, str) else json.dumps(result)
+                if len(content) > MAX_TOOL_RESULT:
+                    content = content[:MAX_TOOL_RESULT] + "\n...(truncated)"
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": call.get("id"),
+                        "name": name,
+                        "content": content,
+                    }
+                )
+
+                if name == "finish":
+                    done = True
+
+            if done:
+                break
+
+        return {"logs": logs, "messages": messages, "done": done, "artifacts": self.tools.artifacts}
+
+
+def _brief(value, limit=200):
+    text = value if isinstance(value, str) else json.dumps(value)
+    return text if len(text) <= limit else text[:limit] + "…"

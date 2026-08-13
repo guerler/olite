@@ -1,0 +1,5 @@
+micropip
+numpy
+pandas
+jsonschema
+pyyaml

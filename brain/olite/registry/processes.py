@@ -1,0 +1,58 @@
+"""Process registry: crystallized agent.yml graphs the loop can invoke."""
+
+from importlib import resources
+
+import yaml
+
+
+class Process:
+    def __init__(self, name, graph, description="", when_to_use=""):
+        self.name = name
+        self.graph = graph
+        self.description = description
+        self.when_to_use = when_to_use
+
+
+class ProcessRegistry:
+    def __init__(self):
+        self._processes = {}
+
+    def register(self, name, graph, description="", when_to_use=""):
+        self._processes[name] = Process(name, graph, description, when_to_use)
+
+    def register_yaml(self, text):
+        graph = yaml.safe_load(text)
+        name = graph.get("id")
+        if not name:
+            raise ValueError("agent.yml missing an 'id'")
+        self.register(
+            name,
+            graph,
+            description=graph.get("description", ""),
+            when_to_use=graph.get("when_to_use", ""),
+        )
+
+    def load_packaged(self):
+        """Load every *.yml under this package's processes/ directory."""
+        root = resources.files("olite.registry").joinpath("processes")
+        if not root.is_dir():
+            return self
+        for entry in root.iterdir():
+            if entry.name.endswith((".yml", ".yaml")):
+                self.register_yaml(entry.read_text())
+        return self
+
+    def get(self, name):
+        return self._processes.get(name)
+
+    def names(self):
+        return sorted(self._processes)
+
+    def catalog_text(self):
+        """Human-readable list for the run_process tool description."""
+        lines = []
+        for name in self.names():
+            p = self._processes[name]
+            hint = f" ({p.when_to_use})" if p.when_to_use else ""
+            lines.append(f"- {name}: {p.description}{hint}")
+        return "\n".join(lines)
