@@ -64,13 +64,27 @@ def _compile(shell_id=None, values=None, params=None, profile=None):
 # --- Schema-builders (state-derived decision contracts) ----------------------
 
 
-def _params(tool):
-    return tool["function"]["parameters"] if tool else {"type": "object", "properties": {}}
+def _params(tool, refusal):
+    """Unwrap a built tool's parameter schema, or raise `refusal` if it built none."""
+    if not tool:
+        raise ValueError(refusal)
+    return tool["function"]["parameters"]
+
+
+def _describe(profile):
+    fields = (profile or {}).get("fields") or {}
+    if not fields:
+        return "the dataset has no columns to plot"
+    listed = ", ".join(f"{n} ({m.get('type', 'nominal')})" for n, m in fields.items())
+    return f"columns: {listed}"
 
 
 @register_builder("vintent.parse_intent_schema")
 def _parse_intent_schema(profile=None):
-    return _params(build_parse_intent_tool(profile))
+    return _params(
+        build_parse_intent_tool(profile),
+        f"cannot read the request against this dataset: {_describe(profile)}",
+    )
 
 
 @register_builder("vintent.choose_process_schema")
@@ -93,9 +107,18 @@ def _choose_process_schema(profile=None):
 
 @register_builder("vintent.choose_shell_schema")
 def _choose_shell_schema(profile=None, intent=None):
-    return _params(build_choose_shell_tool(profile, intent))
+    return _params(
+        build_choose_shell_tool(profile, intent),
+        f"no chart type fits this data — {_describe(profile)}",
+    )
 
 
 @register_builder("vintent.fill_params_schema")
 def _fill_params_schema(shell_id=None, profile=None, intent=None):
-    return _params(build_fill_shell_params_tool(SHELLS.get(shell_id), profile, intent))
+    shell = SHELLS.get(shell_id)
+    if shell is None:
+        raise ValueError(f"unknown shell: {shell_id}")
+    return _params(
+        build_fill_shell_params_tool(shell, profile, intent),
+        f"chart '{shell_id}' needs a column type this data lacks — {_describe(profile)}",
+    )

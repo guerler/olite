@@ -1,4 +1,4 @@
-"""Handler for planner nodes."""
+"""Handler for planner nodes: structured JSON output, never tool calls."""
 
 import json
 import logging
@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import jsonschema
 
-from ..constants import ErrorCode
+from ..constants import PLANNER_MAX_ATTEMPTS, ErrorCode
 from ..types import Context, NodeDefinition, Result
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_route_schema(routes: dict[str, Any]) -> dict[str, Any]:
-    """Build JSON schema for route enum."""
+    """JSON schema validating {"route": <enum>}."""
     return {
         "type": "object",
         "required": ["route"],
@@ -26,7 +26,7 @@ def build_route_schema(routes: dict[str, Any]) -> dict[str, Any]:
 
 
 class PlannerOutputShim:
-    """Parses and validates planner JSON output. Nothing else."""
+    """Parses and validates planner JSON output; the runner owns control flow."""
 
     def validate(
         self,
@@ -75,7 +75,7 @@ class PlannerOutputShim:
 
 
 class PlannerHandler:
-    """Handler for planner nodes."""
+    """Handler for planner nodes: validated JSON only, route or parameter object."""
 
     def __init__(self) -> None:
         self.shim = PlannerOutputShim()
@@ -90,22 +90,49 @@ class PlannerHandler:
         output_mode = node.get("output_mode")
         prompt = self._build_prompt(node, ctx, runner)
 
-        # Build schema based on mode. In json mode the output_schema may be
+        # In json mode the schema may be state-derived via {$build: name, args}.
         if output_mode == "route":
             schema = build_route_schema(node["routes"])
         else:
-            schema = self._resolve_schema(node["output_schema"], ctx, runner)
+            try:
+                schema = self._resolve_schema(node["output_schema"], ctx, runner)
+            except Exception as e:
+                # A builder refusing to produce a contract is the real failure; report it here.
+                logger.error(f"Planner schema build failed: {e}")
+                return {
+                    "ok": False,
+                    "error": {
+                        "code": ErrorCode.PLANNER_SCHEMA_BUILD_FAILED,
+                        "message": str(e),
+                        "details": {"node": ctx.get("nodeId")},
+                    },
+                }
 
         logger.debug(f"Planner executing in {output_mode} mode")
 
-        # Request structured JSON from LLM (no tool calls)
-        raw_response = await registry.reason_structured(prompt, schema)
+        # The schema is advisory prompt text, so a repairable miss retries rather than aborts.
+        result: Result = {"ok": False, "error": {"code": ErrorCode.PLANNER_INVALID_JSON, "message": "no attempt made"}}
+        attempt_prompt = prompt
+        for attempt in range(1, PLANNER_MAX_ATTEMPTS + 1):
+            raw_response = await registry.reason_structured(attempt_prompt, schema)
 
-        # Validate through shim (shim only validates, nothing else)
-        result = self.shim.validate(raw_response, schema)
+            # Validate through shim (shim only validates, nothing else)
+            result = self.shim.validate(raw_response, schema)
+            if result["ok"]:
+                break
+
+            error = result["error"]
+            logger.warning(
+                f"Planner validation failed (attempt {attempt}/{PLANNER_MAX_ATTEMPTS}): {error['message']}"
+            )
+            if attempt < PLANNER_MAX_ATTEMPTS:
+                attempt_prompt = self._repair_prompt(prompt, raw_response, error)
 
         if not result["ok"]:
-            logger.warning(f"Planner validation failed: {result['error']}")
+            result["error"]["details"] = {
+                **(result["error"].get("details") or {}),
+                "attempts": PLANNER_MAX_ATTEMPTS,
+            }
             return result
 
         # Set result in context
@@ -119,13 +146,32 @@ class PlannerHandler:
         logger.debug(f"Planner completed: {result['result']}")
         return result
 
+    def _repair_prompt(
+        self,
+        prompt: str,
+        raw_response: str,
+        error: dict[str, Any],
+    ) -> str:
+        """Re-ask the planner, quoting its rejected reply and why it was rejected."""
+        where = ".".join(str(p) for p in (error.get("details") or {}).get("path") or [])
+        location = f" at `{where}`" if where else ""
+        return f"""{prompt}
+
+Your previous reply was rejected{location}:
+{raw_response[:500]}
+
+Reason: {error.get("message")}
+
+Correct the problem and reply again. Every value must come from the schema's
+allowed options — do not invent field names or values outside an enum."""
+
     def _resolve_schema(
         self,
         spec: Any,
         ctx: Context,
         runner: Any,
     ) -> dict[str, Any]:
-        """Resolve a json-mode output schema, supporting state-derived schemas."""
+        """Resolve a json-mode output schema; `{$build: name, args}` resolves against state."""
         from ..builders import get_builder, is_build_spec
 
         if is_build_spec(spec):

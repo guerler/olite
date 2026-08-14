@@ -47,9 +47,13 @@ class ErrorCode(str, Enum):
     MATERIALIZER_INVALID_ARGS = "materializer_invalid_args"
     PLANNER_INVALID_JSON = "planner_invalid_json"
     PLANNER_SCHEMA_VALIDATION_FAILED = "planner_schema_validation_failed"
+    PLANNER_SCHEMA_BUILD_FAILED = "planner_schema_build_failed"
     TRAVERSE_INVALID_CONFIG = "traverse_invalid_config"
     TRAVERSE_FETCH_FAILED = "traverse_fetch_failed"
 
 
 # Graph execution limits
 MAX_NODES = 1000
+
+# Planner attempts per node; the schema is prompt text, not an enforced grammar.
+PLANNER_MAX_ATTEMPTS = 3
