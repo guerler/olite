@@ -52,7 +52,8 @@ brain/olite/
     skills/*.md           routing hints (visualization -> run_process visualize_dataset)
 
   (drivers/graph/builders.py: schema-builder registry for state-derived planner schemas)
-  (src/artifacts/: typed artifact rendering, vega-lite via vega-embed)
+  (src/artifacts/: typed artifact rendering, vega-lite via vega-embed,
+   mermaid via mermaid; dispatch on `kind`, one branch per renderer)
 ```
 
 vintent (a natural-language-to-chart plugin) is fully absorbed here as the

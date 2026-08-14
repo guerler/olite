@@ -119,5 +119,8 @@ class ToolSurface:
         if isinstance(output, dict) and isinstance(output.get("artifact"), dict):
             art = dict(output["artifact"])
             self.artifacts.append(art)
-            return json.dumps({"ok": True, "artifact": {"kind": art.get("kind"), "title": art.get("title")}})
+            payload = {k: v for k, v in output.items() if k != "artifact"}
+            payload["ok"] = True
+            payload["artifact"] = {"kind": art.get("kind"), "title": art.get("title")}
+            return json.dumps(payload, default=str)
         return json.dumps(output)

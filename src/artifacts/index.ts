@@ -1,14 +1,16 @@
 import { renderVega } from "./vega";
+import { renderMermaid } from "./mermaid";
 
-/** A typed, renderable result produced by a tool or process. */
+/** A typed, renderable result; the kind selects the renderer. */
 export interface Artifact {
     kind: string;
     title?: string;
     spec?: unknown;
+    diagram?: unknown;
     [key: string]: unknown;
 }
 
-/** Append an artifact card to the pane. */
+/** Append an artifact card to the pane, dispatching on kind. */
 export async function renderArtifact(content: HTMLElement, artifact: Artifact): Promise<void> {
     const card = document.createElement("div");
     card.className = "artifact-card";
@@ -29,6 +31,8 @@ export async function renderArtifact(content: HTMLElement, artifact: Artifact): 
 
     if (artifact.kind === "vega-lite" || artifact.kind === "vega") {
         await renderVega(body, artifact.spec);
+    } else if (artifact.kind === "mermaid") {
+        await renderMermaid(body, artifact.diagram);
     } else {
         body.textContent = `Unsupported artifact type: ${artifact.kind}`;
     }

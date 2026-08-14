@@ -117,7 +117,8 @@ nodes:
         $ref: result
     next: done
 
-  # 5. Return the lineage, the narrative, and the diagram.
+  # 5. Return the lineage and the narrative to the model; the diagram goes out of
+  #    band as a typed artifact, so the flowchart source never enters the context.
   done:
     type: terminal
     output:
@@ -129,5 +130,8 @@ nodes:
         $ref: state.truncated
       summary:
         $ref: state.summary
-      mermaid:
-        $ref: state.mermaid
+      artifact:
+        kind: mermaid
+        title: Dataset lineage
+        diagram:
+          $ref: state.mermaid

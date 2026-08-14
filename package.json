@@ -20,6 +20,7 @@
         "test:watch": "vitest --watch"
     },
     "dependencies": {
+        "mermaid": "^11.16.1",
         "vega-embed": "^7.1.0"
     },
     "devDependencies": {
