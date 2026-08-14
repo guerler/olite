@@ -2,6 +2,7 @@
 
 import logging
 
+from olite import prompt
 from olite.drivers import LoopDriver
 from olite.registry import ProcessRegistry, SkillRegistry
 from olite.substrate import Substrate
@@ -14,8 +15,9 @@ async def run(config, inputs, on_event=None):
     processes = ProcessRegistry().load_packaged()
     skills = SkillRegistry().load_packaged()
     driver = LoopDriver(substrate, processes, skills)
-    # Only the router goes in the prompt; bodies arrive via skills_fetch on demand.
-    transcripts = _inject_skills(inputs["transcripts"], skills.router_text())
+    # The shell seeds the identity prompt (olite.xml `ai_prompt`); the brain appends
+    context = "\n\n".join(t for t in (prompt.system_text(), skills.router_text()) if t)
+    transcripts = _inject_context(inputs["transcripts"], context)
     result = await driver.run(transcripts, on_event)
     # Diagnostics for the shell to surface (e.g. whether the Galaxy catalog loaded).
     result["diagnostics"] = {
@@ -25,15 +27,25 @@ async def run(config, inputs, on_event=None):
     return result
 
 
-def _inject_skills(transcripts, skill_text):
-    """Append skill know-how to the system message (or add one if absent)."""
-    if not skill_text or not transcripts:
+BEGIN = "<!-- olite:context -->"
+END = "<!-- /olite:context -->"
+
+
+def _inject_context(transcripts, text):
+    """Put the brain's context blocks in the system message, between markers."""
+    if not text or not transcripts:
         return transcripts
+    block = f"{BEGIN}\n{text}\n{END}"
     first = transcripts[0]
-    if first.get("role") == "system":
-        if skill_text.strip() in (first.get("content") or ""):
-            return transcripts
-        merged = dict(first)
-        merged["content"] = f"{first.get('content', '')}\n\n{skill_text}".strip()
-        return [merged, *transcripts[1:]]
-    return [{"role": "system", "content": skill_text}, *transcripts]
+    if first.get("role") != "system":
+        return [{"role": "system", "content": block}, *transcripts]
+
+    content = first.get("content") or ""
+    start, stop = content.find(BEGIN), content.find(END)
+    if start != -1 and stop > start:
+        content = content[:start] + block + content[stop + len(END):]
+    else:
+        content = f"{content}\n\n{block}"
+    merged = dict(first)
+    merged["content"] = content.strip()
+    return [merged, *transcripts[1:]]

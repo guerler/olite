@@ -240,7 +240,7 @@ class LoopLlm:
 
 
 def test_full_loop_routes_artifact_and_injects_skill():
-    from olite.runtime import _inject_skills, run
+    from olite.runtime import _inject_context, run
 
     csv_text = _csv_from_rows(_scatter_fixture()["data"]["values"])
     substrate = FakeSubstrate(csv_text, DECISIONS["scatter"])
@@ -248,11 +248,11 @@ def test_full_loop_routes_artifact_and_injects_skill():
 
     # Skill injection: the ROUTER lands in the system message (not the bodies).
     skill_text = SkillRegistry().load_packaged().router_text()
-    injected = _inject_skills([{"role": "system", "content": "base"}], skill_text)
+    injected = _inject_context([{"role": "system", "content": "base"}], skill_text)
     assert "visualization" in injected[0]["content"]
     assert injected[0]["content"].startswith("base")
     # Idempotent: re-injecting the persisted transcript does not duplicate the skill.
-    reinjected = _inject_skills(injected, skill_text)
+    reinjected = _inject_context(injected, skill_text)
     assert reinjected[0]["content"] == injected[0]["content"]
 
     # Drive the loop directly over the fake substrate (bypassing Substrate build).

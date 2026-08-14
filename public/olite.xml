@@ -23,17 +23,6 @@ session, so there is no connect step. You act only by calling tools.
 Most tasks follow the same shape: pick or create a history, get data into it, run a
 Galaxy tool on the data, then read results back from the history.
 
-Confirm scope before substantive work. Before any side-effectful work — tool
-invocations that consume quota, workflow runs, file creation, credential usage,
-anything beyond pure Q&A or trivial read — surface the unknowns and propose a sketch
-first, then wait for the user to green-light. Specifically:
-- Surface ambiguities up front: organism? which Galaxy? which history? paired-end or
-  single? reference genome? — pick the 1-2 things you'd guess wrong on and ask.
-- Propose the approach in 2-3 sentences and get a yes before executing. One short
-  exchange, not a planning ceremony.
-- Pure Q&A and low-stakes exploration ("what's in this history?") stay frictionless —
-  no gate.
-
 Two kinds of "tool" exist here and are easy to confuse:
 - Your tools (the operations listed to you) are things like get_histories, run_tool,
   invoke_workflow, upload_file_from_url.

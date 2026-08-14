@@ -24,6 +24,9 @@ The shell (`src/`) is thin. All agent logic is in `brain/`, run inside Pyodide;
 ```
 brain/olite/
   runtime.py            run(config, inputs): build Substrate, run a driver
+  prompt.py             system-prompt blocks ported from Orbit's context.ts
+                        (the notebook-independent half); composed into the
+                        shell-seeded identity prompt between olite:context markers
 
   substrate/            LAYER 1 — what it can touch (the shared kernel)
     substrate.py          Substrate facade = manifest + local + galaxy + catalog + llm
@@ -81,9 +84,12 @@ purpose; both pass the same `CapabilityManifest`.
   OpenAPI spec. Each tool is tagged read/write; write tools are advertised only when
   `write` is granted. The 45th galaxy-mcp tool (`connect`) is implicit — the session
   is already authenticated. Each tool's model-facing description is galaxy-mcp's own
-  docstring, verbatim (`galaxy_tool_docs.py`). `ai_prompt` (in `olite.xml`) is
-  olite's own base instructions — NOT Orbit's; importing Orbit's is open work (see
-  `orbit-faithfulness.md` in the thesis notes).
+  docstring, verbatim (`galaxy_tool_docs.py`).
+
+  The system prompt mirrors loom's split: `ai_prompt` (in `olite.xml`) carries the
+  identity, as pi's base prompt does, and `brain/olite/prompt.py` appends Orbit's
+  discipline blocks, as the loom extension does. The notebook-dependent blocks are
+  not ported yet (see `orbit-faithfulness.md`).
 - **Graph (crystallized agent.yml) → scoped catalog.** The `Catalog` (auto-derived
   from the OpenAPI spec, prefix/method/capability-scoped) is where declared, bounded
   op sets are the point — a process names exactly the ops it touches. `visualize_dataset`
