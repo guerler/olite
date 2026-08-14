@@ -78,7 +78,10 @@ purpose; both pass the same `CapabilityManifest`.
   routes (`run_tool` = POST /api/tools etc.) which are legacy routes absent from the
   OpenAPI spec. Each tool is tagged read/write; write tools are advertised only when
   `write` is granted. The 45th galaxy-mcp tool (`connect`) is implicit — the session
-  is already authenticated. `ai_prompt` (in `olite.xml`) is Orbit's base instructions.
+  is already authenticated. Each tool's model-facing description is galaxy-mcp's own
+  docstring, verbatim (`galaxy_tool_docs.py`). `ai_prompt` (in `olite.xml`) is
+  olite's own base instructions — NOT Orbit's; importing Orbit's is open work (see
+  `orbit-faithfulness.md` in the thesis notes).
 - **Graph (crystallized agent.yml) → scoped catalog.** The `Catalog` (auto-derived
   from the OpenAPI spec, prefix/method/capability-scoped) is where declared, bounded
   op sets are the point — a process names exactly the ops it touches. `visualize_dataset`
@@ -97,6 +100,22 @@ The substrate enforces it: `Catalog.call` checks the op's required capability, a
 
 - Default = `["llm", "local", "read"]` (reason + Pyodide + read-only Galaxy).
 - **Write is never default.** It is granted explicitly and targeted (see below).
+- `CapabilityManifest(None)` takes that default; `CapabilityManifest([])` grants
+  nothing. The two must stay distinct or the narrowest manifest becomes the widest.
+
+**Per-process least privilege (the middle scale).** A process declares
+`capabilities:` in its yml; `run_process` runs it on `Substrate.scoped(declared)`,
+whose grant is the **intersection** of the session's manifest with the declaration.
+Intersection, not union, is the guarantee: a declaration can only subtract, so it
+holds even for a process definition this deployment did not author — a process file
+can never be an escalation vector. Both packaged processes declare `["llm","read"]`,
+so neither can write even in a write-enabled session.
+
+A scoped view shares the parent's service state rather than rebuilding it. That is
+load-bearing: a fresh `LocalPython` would wipe the Pyodide namespace, a fresh `Llm`
+would hand the scoped run its own rate budget (scoping as a rate-limit bypass), and
+a fresh `Catalog` would refetch the OpenAPI spec on every call. Tests:
+`brain/tests/test_least_privilege.py`.
 
 ## Read / write status
 
@@ -149,6 +168,14 @@ a narrative, and a Mermaid diagram.
 
 ## Deferred (documented seams, not stubs of speculative code)
 
-- Skills — markdown know-how loaders, added when the loop consumes them.
-- Per-process least-privilege — run a process under its own declared manifest
-  (intersected with the session), rather than the full session manifest.
+- The notebook — Orbit's `notebook.md` (plan + working memory) has no olite
+  equivalent. The intended replacement is a Galaxy Page; the API surface is already
+  in the tool set (`create_page` / `update_page`), the record discipline is not.
+- Progressive-disclosure skills — `SkillRegistry` concatenates every skill into the
+  system prompt eagerly. Orbit's format is frontmatter + on-demand body, which is
+  what makes a corpus the size of `galaxyproject/galaxy-skills` affordable.
+- GTN tools — Orbit has native GTN discovery/fetch; olite has none.
+- Wider write parity — grow `WRITE_ALLOWLIST` op by op (invoke_workflow, upload,
+  create_page) as parity needs them, each an explicit grantable capability.
+
+See `orbit-faithfulness.md` in the thesis notes for the full component audit.

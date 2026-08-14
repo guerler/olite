@@ -1,5 +1,6 @@
 """LLM access through the Galaxy chat proxy."""
 
+import copy
 import logging
 
 from .completions import completions_post
@@ -16,6 +17,12 @@ class Llm:
         self.manifest = manifest
         rate = config.get("ai_rate_limit", DEFAULT_RATE_LIMIT)
         self._limiter = TokenBucketRateLimiter.from_requests_per_minute(rate)
+
+    def scoped(self, manifest):
+        """A view gated by a narrower manifest, sharing the SAME rate limiter."""
+        view = copy.copy(self)
+        view.manifest = manifest
+        return view
 
     async def complete(self, messages, tools=None, tool_choice=None, parallel_tools=True):
         self.manifest.require("llm")

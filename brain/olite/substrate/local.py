@@ -2,6 +2,7 @@
 
 import ast
 import contextlib
+import copy
 import io
 
 
@@ -9,6 +10,12 @@ class LocalPython:
     def __init__(self, manifest):
         self._manifest = manifest
         self._ns = {}
+
+    def scoped(self, manifest):
+        """A view gated by a narrower manifest, sharing the SAME namespace."""
+        view = copy.copy(self)
+        view._manifest = manifest
+        return view
 
     def run(self, code):
         self._manifest.require("local")

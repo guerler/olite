@@ -1,5 +1,7 @@
 """Direct, capability-gated Galaxy REST access by path."""
 
+import copy
+
 from .http import http
 
 
@@ -8,6 +10,12 @@ class GalaxyHttp:
         self._root = (config.get("galaxy_root") or "/").rstrip("/") + "/"
         self._key = config.get("galaxy_key")
         self.manifest = manifest
+
+    def scoped(self, manifest):
+        """A view of this client gated by a narrower manifest (same root and key)."""
+        view = copy.copy(self)
+        view.manifest = manifest
+        return view
 
     def _headers(self):
         headers = {}

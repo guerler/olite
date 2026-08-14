@@ -74,6 +74,10 @@ class FakeSubstrate:
         self.llm = FakeLlm(decisions)
         self.manifest = FakeManifest()
 
+    def scoped(self, capabilities):
+        # Orchestration is what these tests are about; the real narrowing is covered
+        return self
+
 
 def _load_process():
     return ProcessRegistry().load_packaged().get("visualize_dataset")
@@ -184,6 +188,9 @@ def test_run_process_surfaces_graph_failure_not_null():
 
         class llm:  # unused; the graph fails at fetch before any decision
             pass
+
+        def scoped(self, capabilities):
+            return self
 
     surface = ToolSurface(Sub(), ProcessRegistry().load_packaged())
     out = asyncio.run(surface.dispatch("run_process", {"name": "visualize_dataset", "inputs": {"dataset_id": "d1"}}))

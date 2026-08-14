@@ -4,6 +4,10 @@ kind: agent_pipeline
 description: Reconstruct a dataset's upstream provenance (datasets + jobs) and summarize how it was produced.
 when_to_use: when the user asks how a dataset was made, its lineage, provenance, or the steps that produced it
 
+# Least privilege: walks datasets and jobs read-only and narrates them. Provenance is
+# a pure read; this process must never be able to modify the history it inspects.
+capabilities: ["llm", "read"]
+
 start: fetch_source_dataset
 
 inputs:

@@ -20,6 +20,10 @@ class FakeSubstrate:
     local = None
     llm = None
 
+    def scoped(self, capabilities):
+        # Routing is what these tests are about; the real narrowing is covered by
+        return self
+
 
 def _surface(graph):
     processes = ProcessRegistry()

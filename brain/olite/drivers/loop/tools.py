@@ -109,7 +109,9 @@ class ToolSurface:
         from olite.drivers.graph import GraphDriver
         import olite.registry.materializers  # noqa: F401  (registers materializers + vintent bridge)
 
-        result = await GraphDriver(self.substrate).run(proc.graph, args.get("inputs") or {})
+        # Least privilege: the process runs under its own declared manifest,
+        substrate = self.substrate.scoped(proc.capabilities)
+        result = await GraphDriver(substrate).run(proc.graph, args.get("inputs") or {})
         last = result.get("last") or {}
         # Surface a failed graph to the model rather than returning a bare null.
         if last.get("ok") is False:

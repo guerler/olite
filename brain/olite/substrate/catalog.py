@@ -1,5 +1,6 @@
 """The scoped, capability-gated Galaxy API surface."""
 
+import copy
 import logging
 
 from .providers import load_providers
@@ -33,6 +34,12 @@ class Catalog:
             logger.warning("catalog NOT loaded (root=%s): %s", self.config.get("galaxy_root"), self._load_error)
         return self
 
+    def scoped(self, manifest):
+        """A view gated by a narrower manifest, sharing the SAME loaded providers."""
+        view = copy.copy(self)
+        view.manifest = manifest
+        return view
+
     def status(self):
         """Whether the catalog loaded, how many ops, and any load error. So an empty"""
         op_count = 0
@@ -51,7 +58,7 @@ class Catalog:
 
     async def call(self, target, input=None):
         """Call a catalog op by name (e.g. 'galaxy.histories.get')."""
-        # Distinguish an empty catalog (spec never loaded) from an unknown op, so a
+        # Distinguish an unloaded spec from an unknown op.
         if not self._providers:
             return {
                 "ok": False,

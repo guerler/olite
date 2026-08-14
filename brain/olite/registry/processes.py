@@ -6,19 +6,21 @@ import yaml
 
 
 class Process:
-    def __init__(self, name, graph, description="", when_to_use=""):
+    def __init__(self, name, graph, description="", when_to_use="", capabilities=None):
         self.name = name
         self.graph = graph
         self.description = description
         self.when_to_use = when_to_use
+        # What this process needs, intersected with the session's grant when it runs.
+        self.capabilities = capabilities
 
 
 class ProcessRegistry:
     def __init__(self):
         self._processes = {}
 
-    def register(self, name, graph, description="", when_to_use=""):
-        self._processes[name] = Process(name, graph, description, when_to_use)
+    def register(self, name, graph, description="", when_to_use="", capabilities=None):
+        self._processes[name] = Process(name, graph, description, when_to_use, capabilities)
 
     def register_yaml(self, text):
         graph = yaml.safe_load(text)
@@ -30,6 +32,7 @@ class ProcessRegistry:
             graph,
             description=graph.get("description", ""),
             when_to_use=graph.get("when_to_use", ""),
+            capabilities=graph.get("capabilities"),
         )
 
     def load_packaged(self):

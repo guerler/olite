@@ -4,6 +4,11 @@ kind: agent_pipeline
 description: Turn a natural-language request plus a tabular dataset into a chart (Vega-Lite).
 when_to_use: when the user asks to visualize, chart, plot, or graph a tabular dataset (histogram, scatter, bar chart, distribution, correlation, trend, and so on)
 
+# Least privilege: reads one dataset and reasons about it. No writes, no Pyodide —
+# the transforms are materializers in the graph, not local code. Intersected with the
+# session grant at invocation, so a write-enabled session cannot leak write in here.
+capabilities: ["llm", "read"]
+
 start: fetch
 
 inputs:
