@@ -256,7 +256,16 @@ def test_full_loop_routes_artifact_and_injects_skill():
         {"role": "system", "content": "You are olite."},
         {"role": "user", "content": "scatter BMI vs Glucose"},
     ]
-    result = asyncio.run(driver.run(transcripts))
+    events = []
+    result = asyncio.run(driver.run(transcripts, events.append))
+
+    # Live progress: each tool call emits a start then an end with the same id.
+    starts = [e for e in events if e["type"] == "tool_start"]
+    ends = [e for e in events if e["type"] == "tool_end"]
+    assert starts and len(starts) == len(ends)
+    assert [e["id"] for e in starts] == [e["id"] for e in ends]
+    assert any(e["name"] == "run_process" for e in starts)
+    assert all("content" in e for e in ends)
 
     artifacts = result.get("artifacts") or []
     assert len(artifacts) == 1

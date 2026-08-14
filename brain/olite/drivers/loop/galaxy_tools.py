@@ -3,6 +3,8 @@
 import json
 from urllib.parse import urlencode
 
+from .galaxy_tool_docs import DOCS
+
 TOOLS = []
 
 
@@ -17,6 +19,7 @@ def _q(params):
 
 
 def _tool(name, capability, description, properties, required, handler):
+    # galaxy-mcp's verbatim docstring is the model-facing description (see
     TOOLS.append(
         {
             "name": name,
@@ -26,7 +29,7 @@ def _tool(name, capability, description, properties, required, handler):
                 "type": "function",
                 "function": {
                     "name": name,
-                    "description": description,
+                    "description": DOCS.get(name, description),
                     "parameters": {
                         "type": "object",
                         "properties": properties,

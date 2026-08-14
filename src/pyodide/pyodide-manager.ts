@@ -6,6 +6,8 @@ export interface PyodideManagerOptions {
 }
 
 export class PyodideManager {
+    // Set per run to receive live progress events forwarded from the worker.
+    onEvent?: (event: any) => void;
     private destroyed: boolean;
     private packages: string[];
     private pending: Map<string, { resolve: (v: any) => void; reject: (e: any) => void }>;
@@ -28,6 +30,10 @@ export class PyodideManager {
                 }
                 if (type === "error") {
                     reject(new Error(error || "Pyodide initialization failed"));
+                    return;
+                }
+                if (type === "event") {
+                    this.onEvent?.(e.data.event);
                     return;
                 }
                 if (id && this.pending.has(id)) {

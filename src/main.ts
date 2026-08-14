@@ -108,10 +108,21 @@ async function main() {
         chat.showThinking();
         convo.push({ role: "user", content: text });
         const sent = convo.length;
+        // Cards rendered live from loop events; the final reconcile skips these ids.
+        const streamed = new Set<string>();
+        const onEvent = (ev: any) => {
+            if (ev.type === "tool_start") {
+                streamed.add(ev.id);
+                chat.hideThinking();
+                chat.addToolCard(ev.id, ev.name || "tool");
+            } else if (ev.type === "tool_end") {
+                chat.updateToolCard(ev.id, toolStatus(ev.content || ""), ev.content || "");
+            }
+        };
         try {
             console.groupCollapsed("[olite] turn");
             console.log("request", { galaxy_root: config.galaxy_root, capabilities: config.capabilities, text });
-            const reply = await runOlite(pyodide, config, convo);
+            const reply = await runOlite(pyodide, config, convo, onEvent);
             console.log("diagnostics", reply.diagnostics);
             console.log("trace", reply.logs);
             console.log("messages", reply.messages);
@@ -122,7 +133,7 @@ async function main() {
                 chat.addErrorMessage(`Galaxy catalog did not load (root=${config.galaxy_root}): ${cat.error}`);
             }
             chat.hideThinking();
-            renderMessages(chat, (reply.messages || []).slice(sent));
+            renderMessages(chat, (reply.messages || []).slice(sent), streamed);
             convo.length = 0;
             convo.push(...trimConvo(reply.messages || []));
             const artifacts = reply.artifacts || [];
@@ -177,7 +188,7 @@ function buildConfig(incoming: ReturnType<typeof parseIncoming>) {
 }
 
 /** Render the loop's new messages into ChatPanel: assistant text + tool cards. */
-function renderMessages(chat: ChatPanel, messages: any[]) {
+function renderMessages(chat: ChatPanel, messages: any[], streamed: Set<string> = new Set()) {
     for (const m of messages) {
         if (m.role === "assistant") {
             if (m.content) {
@@ -186,10 +197,14 @@ function renderMessages(chat: ChatPanel, messages: any[]) {
                 chat.finishAssistantMessage();
             }
             for (const tc of m.tool_calls || []) {
-                chat.addToolCard(tc.id, tc.function?.name || "tool");
+                if (!streamed.has(tc.id)) {
+                    chat.addToolCard(tc.id, tc.function?.name || "tool");
+                }
             }
         } else if (m.role === "tool") {
-            chat.updateToolCard(m.tool_call_id, toolStatus(m.content), m.content);
+            if (!streamed.has(m.tool_call_id)) {
+                chat.updateToolCard(m.tool_call_id, toolStatus(m.content), m.content);
+            }
         }
     }
 }

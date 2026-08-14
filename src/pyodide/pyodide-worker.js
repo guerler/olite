@@ -55,6 +55,14 @@ self.onmessage = async (e) => {
             } else {
                 if (type === "runPythonAsync") {
                     running = true;
+                    // Bridge for live progress: Python (via `from js import oliteEmit`)
+                    globalThis.oliteEmit = (json) => {
+                        try {
+                            self.postMessage({ type: "event", id, event: JSON.parse(json) });
+                        } catch (err) {
+                            // ignore a malformed event payload
+                        }
+                    };
                     try {
                         const result = await pyodide.runPythonAsync(parseCode(payload.code));
                         self.postMessage({ id, result });
@@ -62,6 +70,7 @@ self.onmessage = async (e) => {
                         self.postMessage({ id, error: String(err) });
                     } finally {
                         running = false;
+                        globalThis.oliteEmit = undefined;
                     }
                 } else {
                     self.postMessage({ id, error: `Unknown message type: ${type}` });

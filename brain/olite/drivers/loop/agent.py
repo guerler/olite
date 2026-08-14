@@ -16,7 +16,7 @@ class LoopDriver:
         self.substrate = substrate
         self.tools = ToolSurface(substrate, processes)
 
-    async def run(self, transcripts):
+    async def run(self, transcripts, on_event=None):
         messages = [dict(m) for m in transcripts]
         logs = []
         done = False
@@ -42,11 +42,14 @@ class LoopDriver:
             for call in tool_calls:
                 fn = call.get("function", {})
                 name = fn.get("name")
+                call_id = call.get("id")
                 try:
                     args = json.loads(fn.get("arguments") or "{}")
                 except json.JSONDecodeError:
                     args = {}
 
+                # Live tool progress: mirror the pi tool_execution_start/end boundary
+                _emit(on_event, {"type": "tool_start", "id": call_id, "name": name})
                 logs.append(f"call {name}({_brief(args)})")
                 result = await self.tools.dispatch(name, args)
                 logs.append(f"  -> {_brief(result)}")
@@ -57,11 +60,12 @@ class LoopDriver:
                 messages.append(
                     {
                         "role": "tool",
-                        "tool_call_id": call.get("id"),
+                        "tool_call_id": call_id,
                         "name": name,
                         "content": content,
                     }
                 )
+                _emit(on_event, {"type": "tool_end", "id": call_id, "name": name, "content": content})
 
                 if name == "finish":
                     done = True
@@ -70,6 +74,16 @@ class LoopDriver:
                 break
 
         return {"logs": logs, "messages": messages, "done": done, "artifacts": self.tools.artifacts}
+
+
+def _emit(on_event, event):
+    """Deliver a progress event to the optional listener; never let it break the loop."""
+    if on_event is None:
+        return
+    try:
+        on_event(event)
+    except Exception:
+        logger.debug("on_event listener raised", exc_info=True)
 
 
 def _brief(value, limit=200):
