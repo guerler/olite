@@ -48,8 +48,10 @@ brain/olite/
     materializers.py      in-code materializers (lineage.mermaid) + imports the bridge
     vintent_bridge.py     absorbed vintent leaves as materializers + schema-builders
     vintent/              vintent's pure leaves (profiler, processes, shells) unchanged
-    skills.py             SkillRegistry: markdown injected into the system prompt
-    skills/*.md           routing hints (visualization -> run_process visualize_dataset)
+    skills.py             SkillRegistry: Orbit's router in the prompt, bodies via
+                          skills_fetch({repo, path}); tag-or-all on metadata.surfaces
+    skills/<repo>/<skill>/SKILL.md   olite's own + galaxy-skills, vendored at build
+                          time (skills.install.js, pinned by skills.lock.json)
 
   (drivers/graph/builders.py: schema-builder registry for state-derived planner schemas)
   (src/artifacts/: typed artifact rendering, vega-lite via vega-embed,
@@ -135,8 +137,9 @@ The two surfaces gate writes differently but under the same manifest.
 
 ## Build / run
 
-- `npm run build` -> `build:pyodide` (Pyodide assets) + `build:olite`
-  (`brain/` -> `olite-*.whl`, copied into `static/pyodide/`) + `vite build`.
+- `npm run build` -> `build:pyodide` (Pyodide assets) + `build:skills` (vendor
+  galaxy-skills into the brain package) + `build:olite` (`brain/` -> `olite-*.whl`,
+  copied into `static/pyodide/`) + `vite build`.
 - Dev: `GALAXY_ROOT=... GALAXY_KEY=... npm run dev` (Vite proxies `/api` to Galaxy).
 - The substrate is boot-tolerant: if Galaxy/openapi is unreachable, `local` + `llm`
   still work and catalog calls report the provider is unavailable.
@@ -171,9 +174,6 @@ a narrative, and a Mermaid diagram.
 - The notebook — Orbit's `notebook.md` (plan + working memory) has no olite
   equivalent. The intended replacement is a Galaxy Page; the API surface is already
   in the tool set (`create_page` / `update_page`), the record discipline is not.
-- Progressive-disclosure skills — `SkillRegistry` concatenates every skill into the
-  system prompt eagerly. Orbit's format is frontmatter + on-demand body, which is
-  what makes a corpus the size of `galaxyproject/galaxy-skills` affordable.
 - GTN tools — Orbit has native GTN discovery/fetch; olite has none.
 - Wider write parity — grow `WRITE_ALLOWLIST` op by op (invoke_workflow, upload,
   create_page) as parity needs them, each an explicit grantable capability.

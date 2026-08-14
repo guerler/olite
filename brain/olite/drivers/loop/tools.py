@@ -44,6 +44,40 @@ FINISH = {
 }
 
 
+def _skills_fetch_schema(skills):
+    """Orbit's `skills_fetch` signature: addressed by repo-relative path, not by name."""
+    return {
+        "type": "function",
+        "function": {
+            "name": "skills_fetch",
+            "description": (
+                "Fetch operational know-how from a skills repo. The system prompt's "
+                '"Skills repositories" section lists the available repos and the '
+                "canonical paths inside each. If `repo` is omitted, the first repo is used."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "enum": skills.names(),
+                        "description": "Name of the skills repo. Omit to use the default (first) repo.",
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": (
+                            "Relative path inside the repo, e.g. "
+                            "'collection-manipulation/SKILL.md', "
+                            "'galaxy-integration/mcp-reference/gotchas.md'."
+                        ),
+                    },
+                },
+                "required": ["path"],
+            },
+        },
+    }
+
+
 def _run_process_schema(processes):
     return {
         "type": "function",
@@ -66,9 +100,10 @@ def _run_process_schema(processes):
 
 
 class ToolSurface:
-    def __init__(self, substrate, processes=None):
+    def __init__(self, substrate, processes=None, skills=None):
         self.substrate = substrate
         self.processes = processes
+        self.skills = skills
         # Renderable artifacts produced by tools this turn (e.g. a chart from a
         self.artifacts = []
 
@@ -76,6 +111,8 @@ class ToolSurface:
         tools = [RUN_PYTHON]
         tools.extend(galaxy_tools.tool_schemas(self.substrate.manifest))
         tools.append(FINISH)
+        if self.skills and self.skills.names():
+            tools.append(_skills_fetch_schema(self.skills))
         if self.processes and self.processes.names():
             tools.append(_run_process_schema(self.processes))
         return tools
@@ -95,12 +132,31 @@ class ToolSurface:
             return self.substrate.local.run(args.get("code", ""))
         if name == "run_process":
             return await self._run_process(args)
+        if name == "skills_fetch":
+            return self._skills_fetch(args)
         if name == "finish":
             return args.get("summary", "done")
         handler = galaxy_tools.get_handler(name)
         if handler:
             return json.dumps(await handler(self.substrate.galaxy, args), default=str)
         return f"Unknown tool: {name}"
+
+    def _skills_fetch(self, args):
+        """Second half of progressive disclosure: hand over one file, whole."""
+        path = args.get("path")
+        repo_name = args.get("repo")
+        if not self.skills:
+            return "Error: No skills repos are available."
+        repo = self.skills.find(repo_name)
+        if repo is None:
+            return f"Error: Skills repo \"{repo_name}\" is not configured. Available: {', '.join(self.skills.names())}."
+        text = repo.read(path)
+        if text is None:
+            return (
+                f'Error: Failed to fetch "{path}" from {repo.name}. '
+                "Check the path against the skills router in the system prompt."
+            )
+        return text
 
     async def _run_process(self, args):
         proc = self.processes.get(args.get("name")) if self.processes else None

@@ -8,13 +8,13 @@ from .tools import ToolSurface
 logger = logging.getLogger(__name__)
 
 MAX_STEPS = 12
-MAX_TOOL_RESULT = 2000
+# Tool results are NOT truncated, matching Orbit: `skills_fetch` returns the fetched
 
 
 class LoopDriver:
-    def __init__(self, substrate, processes=None):
+    def __init__(self, substrate, processes=None, skills=None):
         self.substrate = substrate
-        self.tools = ToolSurface(substrate, processes)
+        self.tools = ToolSurface(substrate, processes, skills)
 
     async def run(self, transcripts, on_event=None):
         messages = [dict(m) for m in transcripts]
@@ -55,8 +55,6 @@ class LoopDriver:
                 logs.append(f"  -> {_brief(result)}")
 
                 content = result if isinstance(result, str) else json.dumps(result)
-                if len(content) > MAX_TOOL_RESULT:
-                    content = content[:MAX_TOOL_RESULT] + "\n...(truncated)"
                 messages.append(
                     {
                         "role": "tool",

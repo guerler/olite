@@ -50,6 +50,44 @@ frozen here.
 
 ## skills
 
-Markdown know-how in `skills/`, loaded by `SkillRegistry` and appended to the system
-prompt as routing hints. Shipped: `skills/visualization.md` (points the loop at the
-`visualize_dataset` process). Add one by dropping a `.md` file in `skills/`.
+Operational know-how in the Claude-Code skills convention Orbit uses: nested
+`SKILL.md` files with YAML frontmatter (`name`, `description`, `when_to_use`, and
+`surfaces` under `metadata` — a custom key, so the spec puts it there).
+
+```
+skills/<repo>/<skill>/SKILL.md      plus the references/ and examples/ it points at
+```
+
+**Disclosed progressively, exactly as Orbit does it.** `router_text()` renders the
+frontmatter into the system prompt as a router — what exists and the precise call to
+open it — and the model fetches a body with `skills_fetch({repo, path})`. Prompt cost
+scales with the number of skills, not their size. Addressing is by **path**, not by
+name, because a SKILL.md routinely points at sibling files the model fetches the same
+way.
+
+Two behaviours are deliberately Orbit's, not ours:
+
+- **Nothing is truncated.** Orbit returns fetched text as-is, and caps nothing on the
+  way to the model. A skill is an instruction set; a body cut mid-procedure is worse
+  than one never read.
+- **Tag-or-all selection** on `metadata.surfaces`, with `SURFACE_ID = "loom"`. The
+  shipped corpus tags its skills for `loom`; retagging would silently change which
+  skills the agent is offered. Frontmatter that is not valid YAML yields no metadata
+  (some real entries carry `argument-hint: [a] [b]`, which YAML rejects) — Orbit's
+  parser fails the same way, so the same skills stay visible.
+
+Repos:
+
+- `skills/olite/` — olite's own, sorted first so it is the default repo. Its skills
+  route to olite processes, which the shipped corpus knows nothing about.
+- `skills/galaxy-skills/` — `galaxyproject/galaxy-skills`, vendored at build time by
+  `skills.install.js` and pinned by the committed `skills.lock.json`. Gitignored: it
+  is a build artifact. Run `npm run build:skills`; move the pin with
+  `GALAXY_SKILLS_REF=<ref> npm run build:skills`.
+
+Vendoring is the one divergence from Orbit, which fetches at runtime and caches 24h —
+the browser has no cache surviving a session, and a per-turn GitHub round trip does
+not belong on a plugin's critical path. Orbit's `github.com/galaxyproject/*`
+allowlist (skill text is authoritative agent instruction, so an arbitrary repo is a
+prompt-injection vector) is enforced at vendor time instead, and more strongly: the
+running agent cannot be pointed elsewhere at all.

@@ -54,6 +54,9 @@ update_page. Page content embeds datasets through directives that use ENCODED id
 get_history_contents / get_dataset_details.
 
 Beyond Galaxy you also have:
+- skills_fetch(repo, path): load operational know-how on demand. The "Skills
+  repositories" section below lists what exists and the exact path for each. Don't
+  guess operational patterns from training data — fetch the relevant skill first.
 - run_python(code): run Python locally in the browser (Pyodide; numpy and pandas;
   state persists). Use for quick local computation and inspection. It runs in the
   browser, not on Galaxy.
@@ -70,7 +73,12 @@ until it is ok or error. When the task is done, call finish with a one-line summ
              add <ai_api_key> only if LiteLLM requires one. Remove this block to fall
              back to the Galaxy proxy (api/plugins/olite). -->
         <ai_api_base_url>/llm</ai_api_base_url>
-        <ai_model>claude-sonnet-4-5</ai_model>
+        <!-- The model Orbit documents for production (loom README: `--model
+             claude-sonnet-4-6`, and the same value in its config example). Orbit has
+             no hardcoded default — the model is per-provider config — so this tracks
+             what Orbit ships in its docs. In a real deployment Galaxy's
+             inference_services config wins; this is the dev-direct path. -->
+        <ai_model>claude-sonnet-4-6</ai_model>
         <ui>
             <chat>true</chat>
         </ui>

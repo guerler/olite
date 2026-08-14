@@ -16,3 +16,8 @@ brain/*.egg-info/
 # Build output and scratch
 static/
 temp/
+
+# Vendored skills corpus: a build artifact fetched by skills.install.js. The exact
+# revision is pinned in the committed skills.lock.json, so builds stay reproducible
+# without carrying 860 KB of third-party content in this repo.
+brain/olite/registry/skills/galaxy-skills/

@@ -246,10 +246,10 @@ def test_full_loop_routes_artifact_and_injects_skill():
     substrate = FakeSubstrate(csv_text, DECISIONS["scatter"])
     substrate.llm = LoopLlm(DECISIONS["scatter"])
 
-    # Skill injection: the visualization skill lands in the system message.
-    skill_text = SkillRegistry().load_packaged().prompt_text()
+    # Skill injection: the ROUTER lands in the system message (not the bodies).
+    skill_text = SkillRegistry().load_packaged().router_text()
     injected = _inject_skills([{"role": "system", "content": "base"}], skill_text)
-    assert "visualize_dataset" in injected[0]["content"]
+    assert "visualization" in injected[0]["content"]
     assert injected[0]["content"].startswith("base")
     # Idempotent: re-injecting the persisted transcript does not duplicate the skill.
     reinjected = _inject_skills(injected, skill_text)

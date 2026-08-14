@@ -13,8 +13,9 @@ async def run(config, inputs, on_event=None):
     substrate = await Substrate(config).init()
     processes = ProcessRegistry().load_packaged()
     skills = SkillRegistry().load_packaged()
-    driver = LoopDriver(substrate, processes)
-    transcripts = _inject_skills(inputs["transcripts"], skills.prompt_text())
+    driver = LoopDriver(substrate, processes, skills)
+    # Only the router goes in the prompt; bodies arrive via skills_fetch on demand.
+    transcripts = _inject_skills(inputs["transcripts"], skills.router_text())
     result = await driver.run(transcripts, on_event)
     # Diagnostics for the shell to surface (e.g. whether the Galaxy catalog loaded).
     result["diagnostics"] = {

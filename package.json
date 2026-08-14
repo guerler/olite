@@ -8,8 +8,9 @@
     ],
     "scripts": {
         "dev": "npm run build && vite",
-        "build": "npm run build:pyodide && npm run build:olite && vite build",
+        "build": "npm run build:pyodide && npm run build:skills && npm run build:olite && vite build",
         "build:pyodide": "node pyodide.install.js",
+        "build:skills": "node skills.install.js",
         "build:olite": "cd brain && rm -rf build dist olite.egg-info && python -m build --wheel && cp dist/olite-*.whl ../static/pyodide/",
         "preview": "vite preview",
         "prettier": "prettier --config ./prettier.config.js --write './*.{js,ts,json}' 'src/**/*.{js,ts,json,css}'",
