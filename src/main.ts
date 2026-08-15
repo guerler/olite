@@ -134,7 +134,11 @@ async function main() {
                 chat.addErrorMessage(`Galaxy catalog did not load (root=${config.galaxy_root}): ${cat.error}`);
             }
             chat.hideThinking();
-            renderMessages(chat, (reply.messages || []).slice(sent), streamed);
+            const spoke = renderMessages(chat, (reply.messages || []).slice(sent), streamed);
+            // The loop ends as soon as a reply carries no tool calls — including
+            if (!spoke) {
+                chat.addInfoMessage("The model ended the turn without a reply. Ask again, or rephrase.");
+            }
             convo.length = 0;
             convo.push(...trimConvo(reply.messages || []));
             const artifacts = reply.artifacts || [];
@@ -206,10 +210,12 @@ function buildConfig(incoming: ReturnType<typeof parseIncoming>) {
 }
 
 /** Render the loop's new messages into ChatPanel: assistant text + tool cards. */
-function renderMessages(chat: ChatPanel, messages: any[], streamed: Set<string> = new Set()) {
+function renderMessages(chat: ChatPanel, messages: any[], streamed: Set<string> = new Set()): boolean {
+    let spoke = false;
     for (const m of messages) {
         if (m.role === "assistant") {
             if (m.content) {
+                spoke = true;
                 chat.startAssistantMessage();
                 chat.appendDelta(m.content);
                 chat.finishAssistantMessage();
@@ -225,6 +231,7 @@ function renderMessages(chat: ChatPanel, messages: any[], streamed: Set<string> 
             }
         }
     }
+    return spoke;
 }
 
 function toolStatus(content: string): "done" | "error" {
