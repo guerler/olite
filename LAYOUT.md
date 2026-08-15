@@ -43,6 +43,8 @@ brain/olite/
   drivers/              LAYER 2 — how it decides
     loop/                 LoopDriver (default): open-ended, Orbit parity
       galaxy_tools.py       Orbit named tools (galaxy-mcp surface) over GalaxyHttp
+      gtn.py                gtn_search / gtn_fetch (training.galaxyproject.org only)
+      confusables.py        fold Cyrillic/Greek lookalikes in tool names at lookup
     graph/                GraphDriver: polaris engine over the catalog (agent.yml)
 
   registry/            LAYER 3 — what it knows
@@ -195,7 +197,6 @@ a narrative, and a Mermaid diagram.
   reference. **Deliberately deferred** until it can be done in a Galaxy-Page-conform
   way — Orbit stores invocation state as `loom-invocation` YAML inside the notebook,
   which a Page cannot hold verbatim (see the carrier note under the notebook item).
-- GTN tools — Orbit has native GTN discovery/fetch; olite has none.
 - Wider write parity — grow `WRITE_ALLOWLIST` op by op (invoke_workflow, upload,
   create_page) as parity needs them, each an explicit grantable capability.
 

@@ -3,7 +3,7 @@
 import json
 import logging
 
-from . import galaxy_tools
+from . import confusables, galaxy_tools, gtn
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +110,8 @@ class ToolSurface:
     def schemas(self):
         tools = [RUN_PYTHON]
         tools.extend(galaxy_tools.tool_schemas(self.substrate.manifest))
+        # GTN is public training material on one allowlisted host, not Galaxy, so it
+        tools.extend(gtn.tool_schemas())
         tools.append(FINISH)
         if self.skills and self.skills.names():
             tools.append(_skills_fetch_schema(self.skills))
@@ -139,7 +141,22 @@ class ToolSurface:
         handler = galaxy_tools.get_handler(name)
         if handler:
             return json.dumps(await handler(self.substrate.galaxy, args), default=str)
+        gtn_handler = gtn.get_handler(name)
+        if gtn_handler:
+            return json.dumps(await gtn_handler(args), default=str)
+        # Last resort before giving up: the name may be right but spelled with
+        folded = self._fold_tool_name(name)
+        if folded:
+            logger.info("tool name %r folded to %r (unicode confusables)", name, folded)
+            return await self._dispatch(folded, args)
         return f"Unknown tool: {name}"
+
+    def _fold_tool_name(self, name):
+        """The advertised tool `name` was meant to be, or None."""
+        if not confusables.has_confusables(name or ""):
+            return None
+        advertised = [t["function"]["name"] for t in self.schemas()]
+        return confusables.find_match(name, advertised)
 
     def _skills_fetch(self, args):
         """Second half of progressive disclosure: hand over one file, whole."""
