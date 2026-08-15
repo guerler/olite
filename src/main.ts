@@ -196,7 +196,8 @@ function buildConfig(incoming: ReturnType<typeof parseIncoming>) {
     return {
         ai_base_url: s.ai_api_base_url || `${incoming.root}api/plugins/${PLUGIN_NAME}`,
         ai_api_key: s.ai_api_key,
-        ai_model: s.ai_model,
+        // LLM_MODEL (dev only) overrides the manifest so switching provider is an
+        ai_model: (process.env.llm_model as string) || s.ai_model,
         galaxy_root: incoming.root,
         galaxy_key: s.galaxy_api_key,
         // Demo grants write so the kill-gate can submit jobs; real deployments gate

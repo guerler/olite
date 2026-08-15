@@ -5,6 +5,12 @@ const env = {
     GALAXY_KEY: "",
     GALAXY_ROOT: "http://127.0.0.1:8080",
     LLM_ROOT: "http://127.0.0.1:11434",
+    // Path the /llm proxy rewrites to. Most OpenAI-compatible servers expose
+    LLM_PATH: "/v1",
+    // Provider key, injected as a bearer header by the proxy below. Kept in the
+    LLM_KEY: "",
+    // Overrides <ai_model> for a dev run, so switching provider needs no edit to a
+    LLM_MODEL: "",
 };
 
 type EnvKeyType = keyof typeof env;
@@ -46,6 +52,7 @@ export const viteConfigCharts = defineConfig({
     define: {
         "process.env.credentials": JSON.stringify(env.GALAXY_KEY ? "omit" : "include"),
         "process.env.dataset_id": JSON.stringify(env.GALAXY_DATASET_ID),
+        "process.env.llm_model": JSON.stringify(env.LLM_MODEL),
     },
     resolve: {
         alias: {
@@ -57,11 +64,12 @@ export const viteConfigCharts = defineConfig({
             "/api": proxyGalaxy(),
             // Galaxy serves its OpenAPI spec here; the scoped catalog fetches it.
             "/openapi.json": proxyGalaxy(),
-            // Direct LLM (dev): olite posts to /llm/chat/completions; proxied to a
+            // Direct LLM (dev): olite posts to /llm/chat/completions, proxied to any
             "/llm": {
                 changeOrigin: true,
                 target: env.LLM_ROOT,
-                rewrite: (path: string) => path.replace(/^\/llm/, "/v1"),
+                rewrite: (path: string) => path.replace(/^\/llm/, env.LLM_PATH),
+                headers: env.LLM_KEY ? { Authorization: `Bearer ${env.LLM_KEY}` } : undefined,
             },
         },
     },
