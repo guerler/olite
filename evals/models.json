@@ -1,0 +1,49 @@
+{
+  "_comment": "Model matrix for the eval suite. A model whose envRequires are unset is skipped, not failed, so a local run works without every credential (loom's rule). Every entry must be OpenAI-compatible: olite's substrate posts to {baseUrl}/chat/completions with a bearer token, which is also how it reaches Galaxy's chat proxy in production. Add a provider by appending an entry — no code change.",
+  "models": [
+    {
+      "id": "gemini-3.7-flash",
+      "provider": "google",
+      "model": "gemini-3.7-flash",
+      "envRequires": ["GEMINI_KEY"],
+      "providerConfig": {
+        "type": "openai-compatible",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "apiKeyEnvVar": "GEMINI_KEY"
+      }
+    },
+    {
+      "id": "gemini-3.1-flash-lite",
+      "provider": "google",
+      "model": "gemini-3.1-flash-lite",
+      "envRequires": ["GEMINI_KEY"],
+      "providerConfig": {
+        "type": "openai-compatible",
+        "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "apiKeyEnvVar": "GEMINI_KEY"
+      }
+    },
+    {
+      "id": "deepseek-v4-flash",
+      "provider": "deepseek",
+      "model": "deepseek-v4-flash",
+      "envRequires": ["DEEPSEEK_KEY"],
+      "providerConfig": {
+        "type": "openai-compatible",
+        "baseUrl": "https://api.deepseek.com/v1",
+        "apiKeyEnvVar": "DEEPSEEK_KEY"
+      }
+    },
+    {
+      "id": "local-llama",
+      "provider": "llama.cpp",
+      "model": "local",
+      "envRequires": ["LOCAL_LLM_URL"],
+      "providerConfig": {
+        "type": "openai-compatible",
+        "baseUrlEnvVar": "LOCAL_LLM_URL",
+        "apiKeyEnvVar": "LOCAL_LLM_KEY"
+      }
+    }
+  ]
+}

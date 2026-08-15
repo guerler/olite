@@ -1,0 +1,18 @@
+{
+  "name": "plan creation: somatic variant calling from tumour/normal pairs",
+  "description": "Paired tumour/normal calling — a plan that omits the pairing or names no caller has misunderstood the assay.",
+  "tier": 2,
+  "inputs": [
+    "I have matched tumour and normal exome BAMs for 6 patients. Draft a plan to call somatic variants and annotate them. Nothing should run yet."
+  ],
+  "timeoutMs": 180000,
+  "assertions": {
+    "plan": {
+      "exists": true,
+      "routingIn": ["galaxy", "remote"],
+      "minPendingSteps": 3,
+      "mentionsOneOf": ["Mutect", "MuTect2", "VarScan", "Strelka", "LoFreq", "bcftools", "SnpEff", "VEP"]
+    },
+    "behavior": { "doesNotExecute": true }
+  }
+}

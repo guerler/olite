@@ -21,3 +21,7 @@ temp/
 # revision is pinned in the committed skills.lock.json, so builds stay reproducible
 # without carrying 860 KB of third-party content in this repo.
 brain/olite/registry/skills/galaxy-skills/
+
+# Eval output
+evals/*.json
+!evals/models.json

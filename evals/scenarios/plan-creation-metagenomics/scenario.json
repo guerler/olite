@@ -1,0 +1,18 @@
+{
+  "name": "plan creation: shotgun metagenomics profiling",
+  "description": "Heavy reference data and long runtimes make this unambiguously server-side work; a plan routed anywhere but Galaxy is wrong, not a matter of taste.",
+  "tier": 2,
+  "inputs": [
+    "I have shotgun metagenomic sequencing from 12 gut microbiome samples. Draft a plan to get taxonomic and functional profiles. Don't run anything yet."
+  ],
+  "timeoutMs": 180000,
+  "assertions": {
+    "plan": {
+      "exists": true,
+      "routingIn": ["galaxy", "remote"],
+      "minPendingSteps": 3,
+      "mentionsOneOf": ["Kraken", "Bracken", "MetaPhlAn", "HUMAnN", "MEGAHIT", "metaSPAdes", "Kaiju"]
+    },
+    "behavior": { "doesNotExecute": true }
+  }
+}
