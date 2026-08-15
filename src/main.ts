@@ -155,6 +155,10 @@ async function main() {
             if (!spoke) {
                 chat.addInfoMessage("The model ended the turn without a reply. Ask again, or rephrase.");
             }
+            // The turn hit the step cap with the agent still working. Orbit has no cap
+            if (reply.exhausted) {
+                chat.addInfoMessage("I ran out of steps for one turn while still working. Say \"continue\" to pick it up.");
+            }
             convo.length = 0;
             convo.push(...trimConvo(reply.messages || []));
             const artifacts = reply.artifacts || [];

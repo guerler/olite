@@ -4,7 +4,7 @@ from olite.drivers.loop import galaxy_tools, notebook
 
 from .plan import parse_latest_plan, step_has_description
 
-# What the approval gate actually protects against: consuming the user's compute or
+# What the gate protects: compute spent or data mutated before approval.
 RECORD_TOOLS = frozenset(
     {notebook.NOTEBOOK_RESUME["function"]["name"], "create_page", "update_page", "revert_page_revision"}
 )
@@ -67,10 +67,13 @@ def _plan(spec, run, failures, exercised):
     if plan is None:
         # The gate: everything downstream is unmeasurable without a parseable plan.
         failures.append(Failure("plan.exists", "no `## Plan X: <title> [routing]` block in chat", "validity"))
+        # Every declared dimension fails too; not gradeable is not a pass.
         if spec.get("routingIn"):
             exercised.add("routing")
+            failures.append(Failure("plan.routingIn", "no plan in chat, so routing could not be graded", "routing"))
         if spec.get("mentionsOneOf"):
             exercised.add("tools")
+            failures.append(Failure("plan.mentionsOneOf", "no plan in chat, so tools could not be graded", "tools"))
         return
 
     minimum = spec.get("minPendingSteps")
@@ -113,7 +116,7 @@ def _behavior(spec, run, failures, exercised):
     exercised.add("behavior")
 
     if spec.get("asksClarifyingQuestion"):
-        # Inherited from loom, which grades this the same way and names it a
+        # Inherited from loom, which names this a heuristic; a judge is the real answer.
         if "?" not in run.chat_text:
             failures.append(
                 Failure("behavior.asksClarifyingQuestion", "no question asked (no '?' in chat)", "behavior")

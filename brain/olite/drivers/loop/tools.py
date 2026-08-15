@@ -3,7 +3,7 @@
 import json
 import logging
 
-from . import confusables, galaxy_tools, gtn, notebook
+from . import confusables, galaxy_destructive, galaxy_tools, gtn, notebook
 
 logger = logging.getLogger(__name__)
 
@@ -120,8 +120,20 @@ class ToolSurface:
             tools.append(_run_process_schema(self.processes))
         return tools
 
+    def _missing_required(self, name, args):
+        """Required parameters the call left out, per the schema it was given."""
+        schema = next((t for t in self.schemas() if t["function"]["name"] == name), None)
+        if schema is None:
+            return []  # unknown name: not ours to validate, and it may still fold
+        required = schema["function"].get("parameters", {}).get("required") or []
+        return [key for key in required if key not in args]
+
     async def dispatch(self, name, args):
         logger.info("tool %s(%s)", name, _brief(args))
+        missing = self._missing_required(name, args)
+        if missing:
+            logger.info("  -> missing required %s", missing)
+            return f"Tool '{name}' was not called: missing required parameter(s): {', '.join(missing)}."
         try:
             result = await self._dispatch(name, args)
             logger.info("  -> %s", _brief(result))
@@ -131,6 +143,17 @@ class ToolSurface:
             return f"Tool '{name}' raised: {e}"
 
     async def _dispatch(self, name, args):
+        # Destructive Galaxy ops are refused before anything else, for the reason
+        destructive = galaxy_destructive.classify(name, args)
+        if destructive is not None:
+            logger.warning("refused destructive op %s: %s", name, destructive["kind"])
+            return (
+                f"Refused: {galaxy_destructive.describe(destructive)} "
+                "olite cannot perform destructive Galaxy operations — there is no "
+                "confirmation step to authorize one. Tell the user what you wanted to do "
+                "and let them do it in the Galaxy interface."
+            )
+
         if name == "run_python":
             return self.substrate.local.run(args.get("code", ""))
         if name == "run_process":
