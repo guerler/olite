@@ -45,6 +45,7 @@ brain/olite/
       galaxy_tools.py       Orbit named tools (galaxy-mcp surface) over GalaxyHttp
       gtn.py                gtn_search / gtn_fetch (training.galaxyproject.org only)
       confusables.py        fold Cyrillic/Greek lookalikes in tool names at lookup
+      notebook.py           notebook_resume: find-or-create the record Page per history
     graph/                GraphDriver: polaris engine over the catalog (agent.yml)
 
   registry/            LAYER 3 — what it knows
@@ -59,6 +60,8 @@ brain/olite/
                           time (skills.install.js, pinned by skills.lock.json)
 
   (drivers/graph/builders.py: schema-builder registry for state-derived planner schemas)
+  (src/invocations.ts: background watcher advancing submitted Galaxy work
+   between turns — the analogue of loom's galaxy-poller.ts)
   (src/artifacts/: typed artifact rendering, vega-lite via vega-embed,
    mermaid via mermaid; dispatch on `kind`, one branch per renderer)
 ```
@@ -179,15 +182,30 @@ a narrative, and a Mermaid diagram.
 
 ## Deferred (documented seams, not stubs of speculative code)
 
-- The notebook — Orbit's `notebook.md` (plan + working memory) has no olite
-  equivalent. The intended replacement is a Galaxy Page; the API surface is already
-  in the tool set (`create_page` / `update_page`), the record discipline is not.
-  Note for whoever builds it: a Page renders Galaxy Flavored Markdown, so an
-  unknown fence (Orbit's ```loom-invocation YAML) shows as raw monospace. Orbit
-  smuggles it through as a base64 CommonMark link-reference carrier
-  (`[loom-invocation:v1]: #loom "<b64>"`) because HTML comments do not survive —
-  Galaxy's renderer escapes them to visible text. The plan *conventions* and the
-  approval gate are already ported (`prompt.py`) and do not depend on this.
+- The record — Orbit keeps a git-tracked `notebook.md` and mirrors it to a Galaxy
+  Page. **olite uses the Page directly** (decided 2026-08-15): one store, no local
+  copy, no push/pull sync. That drops ~1,000 lines of Orbit's implementation, which
+  exists only because Orbit has a filesystem — and it makes Galaxy's page revisions
+  the version history that Orbit gets from git.
+
+  The API layer is already here: `list_pages` / `get_page` / `create_page` /
+  `update_page` / `list_page_revisions` / `get_page_revision`, tagged read/write.
+  What is missing is the discipline — a skill telling the agent to maintain one, a
+  deterministic per-history slug so a reload finds the same Page (Orbit uses
+  `orbit-<historyId>` for exactly this), and the excerpt block that injects the
+  Page into the prompt **as data, not instructions**. That framing matters more
+  here than in Orbit: a Page is shareable and user-editable, so it is precisely
+  where an injection would arrive, and olite has no exec-guard behind it — only
+  the capability manifest.
+
+  Not needed under this decision: generic Edit/Write (`update_page` is the editing
+  primitive), and Orbit's base64 link-reference carrier — that exists to smuggle a
+  ```loom-invocation fence through a renderer that shows unknown fences as raw
+  monospace and escapes HTML comments to visible text. It only comes back if
+  invocation state is stored on the Page (see below).
+
+  The plan conventions and the approval gate are already ported (`prompt.py`) and
+  do not depend on any of this.
 - Invocation tracking — Orbit has `galaxy_invocation_record` /
   `galaxy_invocation_check_all` / `galaxy_invocation_check_one` plus a 15s
   background poller (`galaxy-poller.ts`) that advances in-flight invocations

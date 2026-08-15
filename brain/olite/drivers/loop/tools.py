@@ -3,7 +3,7 @@
 import json
 import logging
 
-from . import confusables, galaxy_tools, gtn
+from . import confusables, galaxy_tools, gtn, notebook
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +110,7 @@ class ToolSurface:
     def schemas(self):
         tools = [RUN_PYTHON]
         tools.extend(galaxy_tools.tool_schemas(self.substrate.manifest))
+        tools.extend(notebook.tool_schemas(self.substrate.manifest))
         # GTN is public training material on one allowlisted host, not Galaxy, so it
         tools.extend(gtn.tool_schemas())
         tools.append(FINISH)
@@ -138,7 +139,7 @@ class ToolSurface:
             return self._skills_fetch(args)
         if name == "finish":
             return args.get("summary", "done")
-        handler = galaxy_tools.get_handler(name)
+        handler = galaxy_tools.get_handler(name) or notebook.get_handler(name)
         if handler:
             return json.dumps(await handler(self.substrate.galaxy, args), default=str)
         gtn_handler = gtn.get_handler(name)

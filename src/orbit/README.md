@@ -41,4 +41,18 @@ from "../shared/loom-shell-contract.js"
 ```
 
 Nothing else was modified. The team-dispatch / parameter-form / plan-draft branches
-of `ChatPanel` are unused by olite but left intact so the file stays verbatim.
+of `ChatPanel` were unused by olite but left intact so the file stays verbatim.
+
+Two of the three are still unused, and one is no longer:
+
+- **plan-draft — wired.** `main.ts` listens for the `plan-draft-action` event, so
+  Approve / Edit / Reject drive the approval gate.
+- **parameter-form — unwired on purpose (decided 2026-08-15).** `addParameterCard`
+  is a complete interactive form (grouped, typed inputs, min/max/step, help text),
+  but stage 3 of the approval gate deliberately stays a **markdown table**: the
+  prompt already specifies one, it works on any model, and the form needs a payload
+  source olite does not have — Orbit builds `ParameterFormPayload` from an
+  `analyze_plan_parameters` tool that was never ported. Revisit only alongside that
+  tool; the widget alone is not the missing half.
+- **team-dispatch — unused.** Orbit's experimental multi-agent surface, off by
+  default there too.

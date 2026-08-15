@@ -6,6 +6,7 @@ import { parseIncoming } from "./incoming";
 import { PyodideManager } from "./pyodide/pyodide-manager";
 import { runOlite } from "./pyodide-runner";
 import { renderArtifact } from "./artifacts";
+import { InvocationWatcher, galaxyStateReader, isFailure } from "./invocations";
 
 const PLUGIN_NAME = "olite";
 const PROMPT_DEFAULT = "You are olite. Communicate only by calling tools.";
@@ -97,6 +98,19 @@ async function main() {
         })
         .catch((e) => chat.addErrorMessage(`Failed to load olite: ${e}`));
 
+    // Advances submitted Galaxy work between turns, so the agent can hand control
+    const watcher = new InvocationWatcher({
+        readState: galaxyStateReader(config.galaxy_root, (process.env.credentials as RequestCredentials) || "include"),
+        onSettled: (w, state) => {
+            const what = w.kind === "invocation" ? "Workflow invocation" : "Galaxy job";
+            if (isFailure(w.kind, state)) {
+                chat.addErrorMessage(`${what} ${w.id} finished as ${state}.`);
+            } else {
+                chat.addInfoMessage(`${what} ${w.id} finished (${state}). Ask me to check the results.`);
+            }
+        },
+    });
+
     let busy = false;
     async function submit() {
         const text = input.value.trim();
@@ -118,6 +132,8 @@ async function main() {
                 chat.addToolCard(ev.id, ev.name || "tool");
             } else if (ev.type === "tool_end") {
                 chat.updateToolCard(ev.id, toolStatus(ev.content || ""), ev.content || "");
+                // Galaxy returns the job/invocation ids in the submission response,
+                watcher.ingest(ev.name || "", ev.content || "");
             }
         };
         try {

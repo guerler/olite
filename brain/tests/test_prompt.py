@@ -72,12 +72,16 @@ def test_the_approval_gate_keeps_all_four_stages():
     assert "Only after both gates pass" in block
 
 
-def test_the_gate_releases_execution_not_a_notebook_write():
-    """Orbit's stage 5 writes to notebook.md; there is nothing to write to here."""
+def test_both_gates_precede_the_record_write_and_execution():
+    """Orbit's stage 5 is "write the plan, then execute" — both sit behind the gates."""
     block = prompt.PLAN_CONVENTION
 
-    assert "do you begin executing the plan" in block
-    assert "notebook" not in block.lower()
+    gate, _, after = block.partition("**Only after both gates pass**")
+    assert after, "the gate sentence is what holds both actions back"
+    assert "write the approved plan into the record" in after
+    assert "begin executing it" in after
+    # Before the gate, execution is named only to forbid it.
+    assert "Do not start executing at this point" in gate
 
 
 def test_the_plan_template_teaches_the_rigid_heading():
