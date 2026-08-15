@@ -1,6 +1,7 @@
 """The system prompt blocks adopted from Orbit, and how they reach the model."""
 
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -57,6 +58,77 @@ def test_the_local_upload_path_is_refused_not_recommended():
 
     assert "no local-upload path here" in text
     assert "upload_file_from_url" in text
+
+
+def test_the_approval_gate_keeps_all_four_stages():
+    """Losing a stage silently removes the protection the gate exists for."""
+    block = prompt.PLAN_CONVENTION
+
+    assert "four-stage approval gate" in block
+    for stage in ("**Draft in chat.**", "**Wait for explicit plan approval.**",
+                  "**Show the parameter table in chat.**",
+                  "**Wait for explicit parameters approval.**"):
+        assert stage in block, f"missing gate stage: {stage}"
+    assert "Only after both gates pass" in block
+
+
+def test_the_gate_releases_execution_not_a_notebook_write():
+    """Orbit's stage 5 writes to notebook.md; there is nothing to write to here."""
+    block = prompt.PLAN_CONVENTION
+
+    assert "do you begin executing the plan" in block
+    assert "notebook" not in block.lower()
+
+
+def test_the_plan_template_teaches_the_rigid_heading():
+    block = prompt.PLAN_CONVENTION
+
+    assert "## Plan <Letter>: <Title> [<routing>]" in block
+    assert "## Plan A: chrM Variant Calling [galaxy]" in block
+    # The failing forms are spelled out; the model reproduces them otherwise.
+    assert "(missing letter)" in block and "(missing routing tag)" in block
+
+
+def test_routing_tags_describe_only_what_this_build_can_run():
+    """No local execution here, so [local] and [hybrid] cannot describe anything."""
+    block = prompt.PLAN_CONVENTION
+
+    assert "`[galaxy]` or `[remote]`" in block
+    assert "[local]" not in block
+    assert "[hybrid]" not in block
+
+
+def test_step_anchors_are_not_taught():
+    """Anchors exist to let invocation YAML reference a step; that is out of scope."""
+    assert "{#plan-" not in prompt.PLAN_CONVENTION
+
+
+def test_the_plan_fence_is_required_because_the_card_depends_on_it():
+    """ChatPanel renders ```plan fences as the Approve/Edit/Reject card."""
+    block = prompt.PLAN_CONVENTION
+
+    assert "```plan" in block
+    assert "Approve / Edit / Reject" in block
+
+
+def test_every_template_step_carries_a_verification_line():
+    """A step without one cannot be checked off honestly."""
+    steps = [ln for ln in prompt.PLAN_CONVENTION.splitlines() if ln.startswith("- [ ] ")]
+    assert len(steps) == 3
+    assert prompt.PLAN_CONVENTION.count("- Verification:") == len(steps)
+
+
+def test_the_identity_prompt_does_not_forbid_talking():
+    """Regression: `olite.xml` told the model to communicate ONLY by calling tools."""
+    xml = Path(__file__).resolve().parents[2] / "public" / "olite.xml"
+    if not xml.is_file():
+        pytest.skip("olite.xml not present next to the brain package")
+    text = xml.read_text()
+
+    assert "Communicate only by calling tools" not in text
+    # And the blocks that need chat are still the ones asking for it.
+    assert "```plan" in prompt.PLAN_CONVENTION
+    assert "Show the parameter table in chat" in prompt.PLAN_CONVENTION
 
 
 def test_the_date_block_carries_a_real_date():
@@ -118,6 +190,6 @@ def test_nothing_to_inject_leaves_the_transcript_alone(empty):
 
 
 def test_the_prompt_stays_within_a_sane_budget():
-    """loom's whole system prompt is ~8K tokens; the ported half must not exceed it."""
+    """loom's whole system prompt is ~8K tokens; the ported subset must stay under it."""
     approx_tokens = len(prompt.system_text()) / 4
-    assert approx_tokens < 3000, f"ported blocks alone are ~{approx_tokens:.0f} tokens"
+    assert approx_tokens < 4000, f"ported blocks alone are ~{approx_tokens:.0f} tokens"

@@ -180,6 +180,21 @@ a narrative, and a Mermaid diagram.
 - The notebook — Orbit's `notebook.md` (plan + working memory) has no olite
   equivalent. The intended replacement is a Galaxy Page; the API surface is already
   in the tool set (`create_page` / `update_page`), the record discipline is not.
+  Note for whoever builds it: a Page renders Galaxy Flavored Markdown, so an
+  unknown fence (Orbit's ```loom-invocation YAML) shows as raw monospace. Orbit
+  smuggles it through as a base64 CommonMark link-reference carrier
+  (`[loom-invocation:v1]: #loom "<b64>"`) because HTML comments do not survive —
+  Galaxy's renderer escapes them to visible text. The plan *conventions* and the
+  approval gate are already ported (`prompt.py`) and do not depend on this.
+- Invocation tracking — Orbit has `galaxy_invocation_record` /
+  `galaxy_invocation_check_all` / `galaxy_invocation_check_one` plus a 15s
+  background poller (`galaxy-poller.ts`) that advances in-flight invocations
+  between turns. That is what lets its prompt say "submit and hand control back to
+  the user"; olite blocks the turn polling instead, and its plan blocks omit
+  step anchors (`{#plan-a-step-N}`) because anchors exist for invocation blocks to
+  reference. **Deliberately deferred** until it can be done in a Galaxy-Page-conform
+  way — Orbit stores invocation state as `loom-invocation` YAML inside the notebook,
+  which a Page cannot hold verbatim (see the carrier note under the notebook item).
 - GTN tools — Orbit has native GTN discovery/fetch; olite has none.
 - Wider write parity — grow `WRITE_ALLOWLIST` op by op (invoke_workflow, upload,
   create_page) as parity needs them, each an explicit grantable capability.

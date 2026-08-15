@@ -60,7 +60,8 @@ async function main() {
     // Start with the artifact pane collapsed; it reveals when a tool produces one.
     document.body.classList.add("artifact-collapsed");
 
-    const chat = new ChatPanel(container.querySelector<HTMLElement>("#messages")!);
+    const messagesEl = container.querySelector<HTMLElement>("#messages")!;
+    const chat = new ChatPanel(messagesEl);
     const input = container.querySelector<HTMLTextAreaElement>("#input")!;
     const sendBtn = container.querySelector<HTMLButtonElement>("#send-btn")!;
     const artifactContent = container.querySelector<HTMLElement>("#artifact-content")!;
@@ -156,6 +157,22 @@ async function main() {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             void submit();
+        }
+    });
+
+    // Approve / Edit / Reject on a ```plan draft card. ChatPanel (vendored from
+    messagesEl.addEventListener("plan-draft-action", (e) => {
+        const { action, body } = (e as CustomEvent<{ action: string; body: string }>).detail;
+        if (action === "approve") {
+            input.value = "I approve the plan above. Show the full parameter table for review before executing.";
+            void submit();
+        } else if (action === "reject") {
+            input.value = "Reject the plan above — let's rethink it.";
+            void submit();
+        } else if (action === "edit") {
+            // Edit hands the draft back for the user to change; it does not submit.
+            input.value = "Here is the plan with my edits — please revise your draft accordingly:\n\n```plan\n" + body + "\n```";
+            input.focus();
         }
     });
 }

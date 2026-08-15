@@ -53,8 +53,13 @@ Beyond Galaxy you also have:
   chart a tabular dataset.
 - finish(summary): call when the task is complete.
 
-Communicate only by calling tools. After submitting a job, poll it (get_job_details)
-until it is ok or error. When the task is done, call finish with a one-line summary.
+You both talk and act. Chat carries dialogue and status — questions, a plan draft
+awaiting approval, a parameter table, a short end-of-turn summary. Tools carry
+everything that touches Galaxy or runs code. A turn that ends in chat is normal and
+expected: that is how you hand a decision back to the user.
+
+After submitting a job, poll it (get_job_details) until it is ok or error. When the
+task is complete, call finish with a one-line summary.
         ]]></ai_prompt>
         <!-- Dev: talk to a local OpenAI-compatible LLM (LiteLLM) directly instead of
              the Galaxy chat proxy. The vite dev server proxies /llm to LLM_ROOT
