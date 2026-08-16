@@ -192,8 +192,8 @@ def test_the_vendored_corpus_loads_and_is_pinned():
 def test_olite_is_the_default_repo():
     """olite's own skills route to olite's processes; the corpus knows nothing of them."""
     registry = SkillRegistry().load_packaged()
-    assert registry.names()[0] == "olite"
-    assert registry.find(None).name == "olite"
+    assert registry.names()[0] == "olite-skills"
+    assert registry.find(None).name == "olite-skills"
 
 
 @needs_corpus

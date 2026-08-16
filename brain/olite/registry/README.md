@@ -101,7 +101,7 @@ Two behaviours are deliberately Orbit's, not ours:
 
 Repos:
 
-- `skills/olite/` — olite's own, sorted first so it is the default repo. Its skills
+- `skills/olite-skills/` — olite's own, sorted first so it is the default repo. Its skills
   route to olite processes, which the shipped corpus knows nothing about.
 - `skills/galaxy-skills/` — `galaxyproject/galaxy-skills`, vendored at build time by
   `skills.install.js` and pinned by the committed `skills.lock.json`. Gitignored: it

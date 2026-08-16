@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 # Orbit's own surface tag, so the corpus offers the same skills it offers Orbit.
 SURFACE_ID = "loom"
+# Sorted first, so `skills_fetch` without a repo lands on olite's own skills.
+DEFAULT_REPO = "olite-skills"
 
 
 class SkillEntry:
@@ -133,7 +135,7 @@ class SkillRegistry:
         root = resources.files("olite.registry").joinpath("skills")
         if not root.is_dir():
             return self
-        for entry in sorted(root.iterdir(), key=lambda e: (e.name != "olite", e.name)):
+        for entry in sorted(root.iterdir(), key=lambda e: (e.name != DEFAULT_REPO, e.name)):
             if entry.is_dir():
                 self.register(entry.name, entry)
         return self
