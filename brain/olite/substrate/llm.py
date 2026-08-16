@@ -1,4 +1,4 @@
-"""LLM access through the Galaxy chat proxy."""
+"""LLM access through the Galaxy chat proxy, rate-limited and `llm`-gated."""
 
 import copy
 import logging
@@ -19,12 +19,12 @@ class Llm:
         self._limiter = TokenBucketRateLimiter.from_requests_per_minute(rate)
 
     def scoped(self, manifest):
-        """A view gated by a narrower manifest, sharing the SAME rate limiter."""
+        """A narrower view sharing the same rate limiter, so scoping cannot bypass it."""
         view = copy.copy(self)
         view.manifest = manifest
         return view
 
-    async def complete(self, messages, tools=None, tool_choice=None, parallel_tools=True):
+    async def complete(self, messages, tools=None, tool_choice=None, parallel_tools=True, cancellation=None):
         self.manifest.require("llm")
         await self._limiter.acquire()
         payload = {
@@ -38,4 +38,4 @@ class Llm:
             payload["tools"] = tools
         if tool_choice:
             payload["tool_choice"] = tool_choice
-        return await completions_post(payload)
+        return await completions_post(payload, signal=cancellation.signal if cancellation else None)

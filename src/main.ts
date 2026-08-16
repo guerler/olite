@@ -48,6 +48,15 @@ async function main() {
                   <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
               </button>
+              <!-- Orbit's abort button, markup and all: the vendored styles.css
+                   already carries #abort-btn, including the reason it has a visible
+                   label rather than a bare red square. -->
+              <button id="abort-btn" title="Stop (Esc)" class="hidden" aria-label="Stop the current response">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+                <span>Stop</span>
+              </button>
             </div>
           </div>
           <div id="input-hint"><span>Enter to send</span></div>
@@ -55,6 +64,21 @@ async function main() {
         <div id="divider"></div>
         <div id="artifact-pane" class="pane">
           <div id="artifact-content"></div>
+        </div>
+      </div>
+      <!-- Orbit's request modal, reduced to the confirm variant (its input and
+           select variants have no caller here). The vendored styles.css already
+           carries .modal-overlay/.modal/.plan-btn. -->
+      <div id="ext-overlay" class="modal-overlay hidden">
+        <div class="modal">
+          <div class="modal-header"><h2 id="ext-title">Request</h2></div>
+          <div class="modal-body"><div id="ext-message" class="ext-message"></div></div>
+          <div class="modal-footer">
+            <div class="modal-actions">
+              <button id="ext-deny" class="plan-btn">No</button>
+              <button id="ext-accept" class="plan-btn primary">Yes</button>
+            </div>
+          </div>
         </div>
       </div>`;
 
@@ -65,7 +89,13 @@ async function main() {
     const chat = new ChatPanel(messagesEl);
     const input = container.querySelector<HTMLTextAreaElement>("#input")!;
     const sendBtn = container.querySelector<HTMLButtonElement>("#send-btn")!;
+    const abortBtn = container.querySelector<HTMLButtonElement>("#abort-btn")!;
     const artifactContent = container.querySelector<HTMLElement>("#artifact-content")!;
+    const extOverlay = container.querySelector<HTMLElement>("#ext-overlay")!;
+    const extTitle = container.querySelector<HTMLElement>("#ext-title")!;
+    const extMessage = container.querySelector<HTMLElement>("#ext-message")!;
+    const extAccept = container.querySelector<HTMLButtonElement>("#ext-accept")!;
+    const extDeny = container.querySelector<HTMLButtonElement>("#ext-deny")!;
 
     const config = buildConfig(incoming);
     // Runtime context: reveals whether relative fetches resolve against this page or
@@ -119,6 +149,9 @@ async function main() {
         }
         busy = true;
         input.value = "";
+        // Stop replaces Send for the duration of the turn, as in Orbit.
+        sendBtn.classList.add("hidden");
+        abortBtn.classList.remove("hidden");
         chat.addUserMessage(text);
         chat.showThinking();
         convo.push({ role: "user", content: text });
@@ -159,6 +192,9 @@ async function main() {
             if (reply.exhausted) {
                 chat.addInfoMessage("I ran out of steps for one turn while still working. Say \"continue\" to pick it up.");
             }
+            if (reply.aborted) {
+                chat.addInfoMessage("Stopped.");
+            }
             convo.length = 0;
             convo.push(...trimConvo(reply.messages || []));
             const artifacts = reply.artifacts || [];
@@ -173,14 +209,62 @@ async function main() {
             chat.hideThinking();
             chat.addErrorMessage(String(e));
         }
+        abortBtn.classList.add("hidden");
+        sendBtn.classList.remove("hidden");
         busy = false;
     }
 
+    function abortCurrentTurn() {
+        if (busy) {
+            pyodide.abort();
+        }
+    }
+
+    // The brain has parked a turn on a yes/no. Follows Orbit's openExtConfirm: one
+    function showConfirm(confirmId: string, request: any) {
+        extTitle.textContent = request?.title || "Confirm";
+        extMessage.textContent = request?.message || "";
+        extOverlay.classList.remove("hidden");
+
+        const respond = (approved: boolean) => {
+            extOverlay.classList.add("hidden");
+            extAccept.removeEventListener("click", onYes);
+            extDeny.removeEventListener("click", onNo);
+            container.removeEventListener("keydown", onKey, true);
+            pyodide.respondToConfirm(confirmId, approved);
+            chat.addInfoMessage(approved ? `Approved: ${request?.message || ""}` : "Declined.");
+        };
+        const onYes = () => respond(true);
+        const onNo = () => respond(false);
+        const onKey = (e: Event) => {
+            const key = (e as KeyboardEvent).key;
+            if (key === "Escape") {
+                // Capture phase, and stopped here: Escape must answer the modal
+                e.preventDefault();
+                e.stopPropagation();
+                respond(false);
+            }
+        };
+        extAccept.addEventListener("click", onYes);
+        extDeny.addEventListener("click", onNo);
+        container.addEventListener("keydown", onKey, true);
+        extAccept.focus();
+    }
+
+    pyodide.onConfirm = showConfirm;
+
     sendBtn.addEventListener("click", submit);
+    abortBtn.addEventListener("click", abortCurrentTurn);
     input.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             void submit();
+        }
+    });
+    // Esc stops the turn, as in Orbit. Bound on the container rather than the
+    container.addEventListener("keydown", (e) => {
+        if ((e as KeyboardEvent).key === "Escape" && busy) {
+            abortCurrentTurn();
         }
     });
 

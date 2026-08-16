@@ -1,11 +1,11 @@
-"""Entry point the JS shell awaits."""
+"""Entry point the JS shell awaits: build the substrate, run the loop driver."""
 
 import logging
 
 from olite import prompt
 from olite.drivers import LoopDriver
 from olite.registry import ProcessRegistry, SkillRegistry
-from olite.substrate import Substrate
+from olite.substrate import Substrate, cancellation, confirm
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,12 +14,12 @@ async def run(config, inputs, on_event=None):
     substrate = await Substrate(config).init()
     processes = ProcessRegistry().load_packaged()
     skills = SkillRegistry().load_packaged()
-    driver = LoopDriver(substrate, processes, skills)
-    # The shell seeds the identity prompt (olite.xml `ai_prompt`); the brain appends
+    driver = LoopDriver(substrate, processes, skills, confirm.from_js())
+    # The shell seeds the identity prompt; the brain appends discipline and the router.
     context = "\n\n".join(t for t in (prompt.system_text(), skills.router_text()) if t)
     transcripts = _inject_context(inputs["transcripts"], context)
-    result = await driver.run(transcripts, on_event)
-    # Diagnostics for the shell to surface (e.g. whether the Galaxy catalog loaded).
+    result = await driver.run(transcripts, on_event, cancellation.from_js())
+    # Diagnostics for the shell to surface.
     result["diagnostics"] = {
         "catalog": substrate.catalog.status(),
         "capabilities": substrate.manifest.to_list(),

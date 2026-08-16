@@ -1,11 +1,11 @@
-"""Destructive Galaxy operations are refused before they reach Galaxy."""
+"""Destructive Galaxy operations need the user's word before they reach Galaxy."""
 
 import asyncio
 import json
 
 from olite.drivers.loop import galaxy_destructive
 from olite.drivers.loop.tools import ToolSurface
-from olite.substrate import CapabilityManifest
+from olite.substrate import CapabilityManifest, Confirmation
 
 
 class RecordingGalaxy:
@@ -32,10 +32,23 @@ class FakeSubstrate:
         self.manifest = CapabilityManifest(["llm", "local", "read", "write"])
 
 
-def _dispatch(name, args):
+def _dispatch(name, args, confirmation=None):
     substrate = FakeSubstrate()
-    surface = ToolSurface(substrate)
+    surface = ToolSurface(substrate, confirmation=confirmation)
     return asyncio.run(surface.dispatch(name, args)), substrate.galaxy
+
+
+class Asked:
+    """A user who answers every approval the same way, and remembers being asked."""
+
+    def __init__(self, answer):
+        self.answer = answer
+        self.questions = []
+        self.confirmation = Confirmation(ask=self._ask)
+
+    async def _ask(self, payload):
+        self.questions.append(json.loads(payload))
+        return self.answer
 
 
 def test_history_delete_is_refused_and_never_reaches_galaxy():
@@ -98,6 +111,64 @@ def test_purge_outranks_delete_when_both_are_set():
 def test_unrelated_tools_are_not_classified():
     assert galaxy_destructive.classify("create_history", {"history_name": "x"}) is None
     assert galaxy_destructive.classify("run_tool", {"deleted": True}) is None
+
+
+def test_an_approved_delete_reaches_galaxy():
+    """Orbit's local mode confirms and then proceeds; only its remote mode, which"""
+    user = Asked(answer=True)
+    result, galaxy = _dispatch("update_history", {"history_id": "h1", "deleted": True}, user.confirmation)
+
+    assert user.questions, "the user was never asked"
+    assert galaxy.calls, "an approved delete never reached Galaxy"
+    assert not str(result).startswith("Refused:")
+
+
+def test_a_declined_delete_does_not_reach_galaxy():
+    user = Asked(answer=False)
+    result, galaxy = _dispatch("update_history", {"history_id": "h1", "deleted": True}, user.confirmation)
+
+    assert galaxy.calls == []
+    assert "declined" in result
+
+
+def test_the_question_carries_the_honest_headline():
+    user = Asked(answer=False)
+    _dispatch("update_history", {"history_id": "h1", "purged": True}, user.confirmation)
+
+    (question,) = user.questions
+    assert "cannot be undone" in question["message"]
+    assert question["title"]
+
+
+def test_approval_is_never_remembered_between_calls():
+    """loom: a destructive op is never cached and never offered "allow for session"""
+    user = Asked(answer=True)
+    substrate = FakeSubstrate()
+    surface = ToolSurface(substrate, confirmation=user.confirmation)
+
+    for _ in range(3):
+        asyncio.run(surface.dispatch("update_history", {"history_id": "h1", "deleted": True}))
+
+    assert len(user.questions) == 3
+
+
+def test_a_non_destructive_call_asks_nothing():
+    user = Asked(answer=True)
+    _dispatch("update_history", {"history_id": "h1", "name": "renamed"}, user.confirmation)
+
+    assert user.questions == []
+
+
+def test_a_broken_confirmation_bridge_reads_as_no():
+    async def gone(payload):
+        raise RuntimeError("worker torn down")
+
+    result, galaxy = _dispatch(
+        "update_history", {"history_id": "h1", "deleted": True}, Confirmation(ask=gone)
+    )
+
+    assert galaxy.calls == []
+    assert result.startswith("Refused:")
 
 
 def test_a_call_missing_a_required_parameter_is_not_executed():

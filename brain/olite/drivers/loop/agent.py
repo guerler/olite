@@ -3,6 +3,8 @@
 import json
 import logging
 
+from olite.substrate import Cancellation
+
 from .tools import ToolSurface
 
 logger = logging.getLogger(__name__)
@@ -17,22 +19,40 @@ TRUNCATED_ERROR = (
 )
 # Arguments that are not valid JSON are reported back the same way rather than
 MALFORMED_ARGS_ERROR = 'Tool call "{name}" was not executed: its arguments are not valid JSON ({detail}).'
+# pi's wording for a call dropped because the run was aborted.
+ABORTED_ERROR = "Operation aborted"
 # Tool results are NOT truncated, matching Orbit: `skills_fetch` returns the fetched
 
 
 class LoopDriver:
-    def __init__(self, substrate, processes=None, skills=None):
+    def __init__(self, substrate, processes=None, skills=None, confirmation=None):
         self.substrate = substrate
-        self.tools = ToolSurface(substrate, processes, skills)
+        self.tools = ToolSurface(substrate, processes, skills, confirmation)
 
-    async def run(self, transcripts, on_event=None):
+    async def run(self, transcripts, on_event=None, cancellation=None):
         messages = [dict(m) for m in transcripts]
         logs = []
         done = False
         exhausted = True  # cleared by whichever branch ends the loop deliberately
+        aborted = False
+        cancellation = cancellation or Cancellation()
 
         for _ in range(MAX_STEPS):
-            reply = await self.substrate.llm.complete(messages, tools=self.tools.schemas())
+            if cancellation.aborted:
+                aborted, exhausted = True, False
+                break
+
+            try:
+                reply = await self.substrate.llm.complete(
+                    messages, tools=self.tools.schemas(), cancellation=cancellation
+                )
+            except Exception:
+                # A cancelled fetch raises. Whether this exception IS the abort is
+                if not cancellation.aborted:
+                    raise
+                aborted, exhausted = True, False
+                break
+
             choice = reply.get("choices", [{}])[0]
             message = choice.get("message", {})
             truncated = choice.get("finish_reason") == TRUNCATED
@@ -60,7 +80,10 @@ class LoopDriver:
 
                 refusal = None
                 args = {}
-                if truncated:
+                if cancellation.aborted:
+                    # pi checks the signal between tools and stops executing. It can
+                    refusal = ABORTED_ERROR
+                elif truncated:
                     refusal = TRUNCATED_ERROR.format(name=name)
                 else:
                     try:
@@ -97,10 +120,16 @@ class LoopDriver:
                 exhausted = False
                 break
 
+            if cancellation.aborted:
+                aborted, exhausted = True, False
+                break
+
         return {
             "logs": logs,
             "messages": messages,
             "done": done,
+            # The user pressed Stop. Distinct from `exhausted`: one is the user
+            "aborted": aborted,
             # The turn hit MAX_STEPS with the model still calling tools. The shell
             "exhausted": exhausted,
             "artifacts": self.tools.artifacts,

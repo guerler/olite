@@ -3,6 +3,8 @@
 import json
 import logging
 
+from olite.substrate import Confirmation
+
 from . import confusables, galaxy_destructive, galaxy_tools, gtn, notebook
 
 logger = logging.getLogger(__name__)
@@ -100,10 +102,12 @@ def _run_process_schema(processes):
 
 
 class ToolSurface:
-    def __init__(self, substrate, processes=None, skills=None):
+    def __init__(self, substrate, processes=None, skills=None, confirmation=None):
         self.substrate = substrate
         self.processes = processes
         self.skills = skills
+        # How the surface reaches the user for an approval. Unavailable by default,
+        self.confirmation = confirmation or Confirmation()
         # Renderable artifacts produced by tools this turn (e.g. a chart from a
         self.artifacts = []
 
@@ -146,13 +150,9 @@ class ToolSurface:
         # Destructive Galaxy ops are refused before anything else, for the reason
         destructive = galaxy_destructive.classify(name, args)
         if destructive is not None:
-            logger.warning("refused destructive op %s: %s", name, destructive["kind"])
-            return (
-                f"Refused: {galaxy_destructive.describe(destructive)} "
-                "olite cannot perform destructive Galaxy operations — there is no "
-                "confirmation step to authorize one. Tell the user what you wanted to do "
-                "and let them do it in the Galaxy interface."
-            )
+            refusal = await self._gate_destructive(name, destructive)
+            if refusal is not None:
+                return refusal
 
         if name == "run_python":
             return self.substrate.local.run(args.get("code", ""))
@@ -174,6 +174,21 @@ class ToolSurface:
             logger.info("tool name %r folded to %r (unicode confusables)", name, folded)
             return await self._dispatch(folded, args)
         return f"Unknown tool: {name}"
+
+    async def _gate_destructive(self, name, op):
+        """Why this destructive operation must not run, or None if the user said yes."""
+        headline = galaxy_destructive.describe(op)
+        if not self.confirmation.available:
+            logger.warning("refused destructive op %s: no way to ask", name)
+            return (
+                f"Refused: {headline} There is no interactive session to approve it. "
+                "Tell the user what you wanted to do and let them do it in the Galaxy interface."
+            )
+        if not await self.confirmation.ask("Confirm destructive operation", headline):
+            logger.info("user declined destructive op %s", name)
+            return f"Refused: {headline} The user declined."
+        logger.warning("user approved destructive op %s: %s", name, op["kind"])
+        return None
 
     def _fold_tool_name(self, name):
         """The advertised tool `name` was meant to be, or None."""

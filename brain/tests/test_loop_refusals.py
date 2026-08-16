@@ -14,7 +14,7 @@ class ScriptedLlm:
         self.choices = list(choices)
         self.calls = []
 
-    async def complete(self, messages, tools=None):
+    async def complete(self, messages, tools=None, **kwargs):
         self.calls.append(messages)
         return {"choices": [self.choices.pop(0)]}
 

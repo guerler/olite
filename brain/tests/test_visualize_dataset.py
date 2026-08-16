@@ -50,7 +50,7 @@ class FakeLlm:
     def __init__(self, decisions):
         self.decisions = decisions
 
-    async def complete(self, messages, tools=None):
+    async def complete(self, messages, tools=None, **kwargs):
         content = messages[-1].get("content", "") if messages else ""
         if '"shellId"' in content:
             d = self.decisions["shell"]
@@ -220,7 +220,7 @@ class LoopLlm:
         self.decisions = decisions
         self.loop_calls = 0
 
-    async def complete(self, messages, tools=None):
+    async def complete(self, messages, tools=None, **kwargs):
         if tools is None:
             return await FakeLlm(self.decisions).complete(messages)
         self.loop_calls += 1

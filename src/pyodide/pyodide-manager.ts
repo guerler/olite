@@ -8,6 +8,8 @@ export interface PyodideManagerOptions {
 export class PyodideManager {
     // Set per run to receive live progress events forwarded from the worker.
     onEvent?: (event: any) => void;
+    // Set per run to answer an approval; the turn is parked until it is answered.
+    onConfirm?: (confirmId: string, request: any) => void;
     private destroyed: boolean;
     private packages: string[];
     private pending: Map<string, { resolve: (v: any) => void; reject: (e: any) => void }>;
@@ -36,6 +38,15 @@ export class PyodideManager {
                     this.onEvent?.(e.data.event);
                     return;
                 }
+                if (type === "confirm") {
+                    // With no handler bound the turn would park forever; deny.
+                    if (this.onConfirm) {
+                        this.onConfirm(e.data.confirmId, e.data.request);
+                    } else {
+                        this.respondToConfirm(e.data.confirmId, false);
+                    }
+                    return;
+                }
                 if (id && this.pending.has(id)) {
                     const entry = this.pending.get(id)!;
                     this.pending.delete(id);
@@ -61,6 +72,20 @@ export class PyodideManager {
                 this.pending.set(id, { resolve, reject });
                 this.worker.postMessage({ type, payload, id });
             });
+        }
+    }
+
+    /** Answer an approval request, resuming the parked turn. */
+    respondToConfirm(confirmId: string, approved: boolean): void {
+        if (!this.destroyed) {
+            this.worker.postMessage({ type: "confirmResult", payload: { confirmId, approved } });
+        }
+    }
+
+    /** Stop the run in flight; fire-and-forget, the run settles with an aborted result. */
+    abort(): void {
+        if (!this.destroyed) {
+            this.worker.postMessage({ type: "abort" });
         }
     }
 

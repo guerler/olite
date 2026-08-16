@@ -46,7 +46,7 @@ class ScriptedLlm:
         self.scripts = {k: list(v) for k, v in scripts.items()}
         self.asked = []
 
-    async def complete(self, messages, tools=None):
+    async def complete(self, messages, tools=None, **kwargs):
         content = messages[-1].get("content", "") if messages else ""
         if '"shellId"' in content:
             key = "shell"
@@ -83,7 +83,7 @@ def _run(csv_text, scripts):
     return result, substrate.llm
 
 
-# Glucose is quantitative, so it is absent from color's nominal-only enum — the same
+# Glucose is quantitative, so it is absent from color's nominal-only enum.
 BAD_THEN_GOOD = {
     "intent": [{"goal": "relationship", "shell_fields": ["BMI", "Glucose"], "extract_fields": []}],
     "extract": [{"id": "none"}],
@@ -110,7 +110,7 @@ def test_retry_prompt_quotes_the_rejected_value_and_the_reason():
     captured = []
 
     class CapturingLlm(ScriptedLlm):
-        async def complete(self, messages, tools=None):
+        async def complete(self, messages, tools=None, **kwargs):
             captured.append(messages[-1].get("content", ""))
             return await super().complete(messages, tools)
 

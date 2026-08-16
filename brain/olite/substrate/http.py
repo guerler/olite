@@ -13,7 +13,7 @@ INITIAL_BACKOFF = 1.0  # seconds
 
 
 class HttpClient:
-    async def request(self, method, url, headers=None, body=None):
+    async def request(self, method, url, headers=None, body=None, signal=None):
         raise NotImplementedError
 
 
@@ -46,7 +46,7 @@ class BrowserHttpClient(HttpClient):
         self._fetch = fetch
         self._to_js = to_js
 
-    async def request(self, method, url, headers=None, body=None):
+    async def request(self, method, url, headers=None, body=None, signal=None):
         headers = headers or {}
         options = {
             "method": method.upper(),
@@ -56,6 +56,9 @@ class BrowserHttpClient(HttpClient):
         if body is not None:
             options["body"] = json.dumps(body)
             headers.setdefault("Content-Type", "application/json")
+        # Handed to fetch so Stop drops the request in flight.
+        if signal is not None:
+            options["signal"] = signal
 
         last_error = None
         for attempt in range(MAX_RETRIES):
@@ -97,7 +100,9 @@ class ServerHttpClient(HttpClient):
 
         self._aiohttp = aiohttp
 
-    async def request(self, method, url, headers=None, body=None):
+    async def request(self, method, url, headers=None, body=None, signal=None):
+        # A browser AbortSignal has no meaning here; the loop's own checks still apply.
+        del signal
         data = None
         if body is not None:
             data = json.dumps(body)
