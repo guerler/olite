@@ -1,9 +1,6 @@
-"""olite materializers: deterministic Python functions callable from a graph's"""
+"""olite's own materializers: deterministic functions a graph can call."""
 
 from olite.drivers.graph import register_materializer
-
-# Registering the absorbed vintent leaves is an import side effect.
-import olite.registry.vintent_bridge  # noqa: E402,F401
 
 
 @register_materializer("lineage.mermaid")

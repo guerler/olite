@@ -11,7 +11,9 @@ from olite.drivers.graph import GraphDriver
 from olite.drivers.graph.constants import PLANNER_MAX_ATTEMPTS, ErrorCode
 from olite.registry import ProcessRegistry
 
-import olite.registry.materializers  # noqa: F401  (registers materializers + bridge)
+from olite.registry import load_primitives
+
+load_primitives()
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -150,7 +152,7 @@ def test_unplottable_data_fails_at_the_decision_not_at_compile():
 
 
 def test_fill_params_builder_rejects_an_unknown_shell():
-    from olite.registry.vintent_bridge import _fill_params_schema
+    from olite.registry.extensions.vintent.bridge import _fill_params_schema
 
     profile = {"fields": {"a": {"type": "quantitative"}}, "row_count": 1}
     try:

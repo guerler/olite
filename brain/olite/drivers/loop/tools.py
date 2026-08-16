@@ -240,7 +240,9 @@ class ToolSurface:
         if not proc:
             return ToolOutcome(json.dumps({"error": f"unknown process: {args.get('name')}"}), is_error=True)
         from olite.drivers.graph import GraphDriver
-        import olite.registry.materializers  # noqa: F401  (registers materializers + vintent bridge)
+        from olite.registry import load_primitives
+
+        load_primitives()
 
         # Least privilege: the process manifest, intersected with the session's.
         substrate = self.substrate.scoped(proc.capabilities)

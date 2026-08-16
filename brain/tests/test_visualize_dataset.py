@@ -9,11 +9,13 @@ import os
 
 from olite.drivers.graph import GraphDriver
 from olite.registry import ProcessRegistry, SkillRegistry
-from olite.registry.vintent.modules.profiler import profile_rows, rows_from_tabular
-from olite.registry.vintent.modules.process import run_process as leaf_run_process
-from olite.registry.vintent.modules.registry import PROCESSES, SHELLS
+from olite.registry.extensions.vintent.modules.profiler import profile_rows, rows_from_tabular
+from olite.registry.extensions.vintent.modules.process import run_process as leaf_run_process
+from olite.registry.extensions.vintent.modules.registry import PROCESSES, SHELLS
 
-import olite.registry.materializers  # noqa: F401  (registers materializers + bridge)
+from olite.registry import load_primitives
+
+load_primitives()
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -202,7 +204,7 @@ def test_run_process_surfaces_graph_failure_not_null():
 
 def test_choose_shell_and_fill_schemas_are_state_derived():
     """The decision contracts come from the live profile, not the yaml."""
-    from olite.registry.vintent_bridge import _choose_shell_schema, _fill_params_schema
+    from olite.registry.extensions.vintent.bridge import _choose_shell_schema, _fill_params_schema
 
     profile = profile_rows(rows_from_tabular(_csv_from_rows(_scatter_fixture()["data"]["values"])))
     shell_enum = _choose_shell_schema(profile=profile)["properties"]["shellId"]["enum"]

@@ -36,17 +36,33 @@ Shipped:
 - **`visualize_dataset`** (`processes/visualize_dataset.yml`): the absorbed vintent
   pipeline. Fetch + profile a dataset, four state-derived `planner` decisions
   (intent, extract, shell, params), deterministic transforms, then compile a
-  Vega-Lite chart returned as a typed artifact. Its leaves live under `vintent/` and
-  are registered by `vintent_bridge.py`.
+  Vega-Lite chart returned as a typed artifact. Its leaves live under `extensions/vintent/` and
+  are registered by that package's `bridge.py`.
 
 Materializers and schema-builders used by processes register in code
-(`materializers.py` + `vintent_bridge.py`, via `register_materializer` /
+(`materializers.py` + `extensions/*/bridge.py`, via `register_materializer` /
 `register_builder`). Import is lazy: the graph engine and registrations load only
 when `run_process` first runs.
 
 Add a process by dropping an `agent.yml` in `processes/` (shipped via
 `package-data`). A process starts life as an ad hoc loop task; once proven, it is
 frozen here.
+
+## extensions
+
+Absorbed code packs. Each is a directory with a `bridge.py` that registers what it
+offers as graph primitives, and `extensions/__init__.py` imports every bridge.
+
+```
+extensions/
+  __init__.py     imports each pack's bridge
+  vintent/
+    bridge.py     registers vintent's leaves as materializers + schema-builders
+    core/ modules/
+```
+
+`registry.load_primitives()` is the one call that loads them; nothing registers by
+side-effect import any more. Tests mirror the layout under `tests/extensions/`.
 
 ## skills
 

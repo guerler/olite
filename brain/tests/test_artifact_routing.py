@@ -6,7 +6,9 @@ import json
 from olite.drivers.loop.tools import ToolSurface
 from olite.registry import ProcessRegistry
 
-import olite.registry.materializers  # noqa: F401  (registers materializers + bridge)
+from olite.registry import load_primitives
+
+load_primitives()
 
 
 class FakeManifest:
