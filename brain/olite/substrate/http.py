@@ -55,8 +55,18 @@ def _google_retry_info(body):
 
 
 class HttpClient:
-    async def request(self, method, url, headers=None, body=None, signal=None):
+    async def request(self, method, url, headers=None, body=None, signal=None, on_retry=None):
         raise NotImplementedError
+
+
+def _report(on_retry, status, wait, attempt):
+    """Tell the caller we are waiting, so a slow turn does not look like a hang."""
+    if on_retry is None:
+        return
+    try:
+        on_retry({"status": status, "wait": wait, "attempt": attempt, "of": MAX_RETRIES})
+    except Exception:
+        logger.debug("retry listener raised", exc_info=True)
 
 
 def is_pyodide():
@@ -96,7 +106,7 @@ class BrowserHttpClient(HttpClient):
         self._fetch = fetch
         self._to_js = to_js
 
-    async def request(self, method, url, headers=None, body=None, signal=None):
+    async def request(self, method, url, headers=None, body=None, signal=None, on_retry=None):
         headers = headers or {}
         options = {
             "method": method.upper(),
@@ -137,6 +147,7 @@ class BrowserHttpClient(HttpClient):
                 stated = retry_after(_js_headers(response), text)
                 backoff = stated if stated is not None else INITIAL_BACKOFF * (2**attempt)
                 logger.warning(f"HTTP {status}, retrying in {backoff}s " f"(attempt {attempt + 1}/{MAX_RETRIES})")
+                _report(on_retry, status, backoff, attempt + 1)
                 await asyncio.sleep(backoff)
 
         raise last_error
@@ -151,7 +162,7 @@ class ServerHttpClient(HttpClient):
 
         self._aiohttp = aiohttp
 
-    async def request(self, method, url, headers=None, body=None, signal=None):
+    async def request(self, method, url, headers=None, body=None, signal=None, on_retry=None):
         # A browser AbortSignal has no meaning here; the loop's own checks still apply.
         del signal
         data = None
@@ -195,6 +206,7 @@ class ServerHttpClient(HttpClient):
                 stated = retry_after(last_headers, text)
                 backoff = stated if stated is not None else INITIAL_BACKOFF * (2**attempt)
                 logger.warning(f"HTTP {status}, retrying in {backoff}s " f"(attempt {attempt + 1}/{MAX_RETRIES})")
+                _report(on_retry, status, backoff, attempt + 1)
                 await asyncio.sleep(backoff)
 
         raise last_error

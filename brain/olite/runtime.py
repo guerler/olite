@@ -8,6 +8,7 @@ from olite.registry import ProcessRegistry, SkillRegistry
 from olite.substrate import Substrate, cancellation, confirm
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 async def run(config, inputs, on_event=None):
@@ -18,7 +19,18 @@ async def run(config, inputs, on_event=None):
     # The shell seeds the identity prompt; the brain appends discipline and the router.
     context = "\n\n".join(t for t in (prompt.system_text(), skills.router_text()) if t)
     transcripts = _inject_context(inputs["transcripts"], context)
-    result = await driver.run(transcripts, on_event, cancellation.from_js())
+    try:
+        result = await driver.run(transcripts, on_event, cancellation.from_js())
+    except Exception as e:
+        # A failed turn is a result, not a crash: the shell can say what went wrong,
+        # where a raised exception reaches the user as a Pyodide traceback.
+        logger.exception("turn failed")
+        return {
+            "logs": [],
+            "messages": inputs["transcripts"],
+            "new_messages": [],
+            "error": {"message": str(e), "status_code": getattr(e, "status_code", None)},
+        }
     # Diagnostics for the shell to surface.
     result["diagnostics"] = {
         "catalog": substrate.catalog.status(),

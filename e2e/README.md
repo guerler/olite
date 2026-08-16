@@ -32,6 +32,15 @@ model does.
 Screenshots land next to the driver's `OUT` path. Look at them — a check can pass on
 a page that renders nothing.
 
-`stub.cjs` scripts itself through `/__script?name=…` (`confirm`, `slow`) and reports
+`ratelimit-drive.cjs` covers the provider-rate-limit path: the stub 429s once with a
+stated `retryDelay`, and the run asserts the wait is announced, counted down, recovered
+from, and never shown as a traceback.
+
+```bash
+curl "http://127.0.0.1:8099/__script?name=ratelimit" && node e2e/ratelimit-drive.cjs
+```
+
+`stub.cjs` scripts itself through `/__script?name=…` (`confirm`, `slow`, `compact`,
+`ratelimit`) and reports
 every Galaxy request it received at `/__seen`, which is what makes "declining sends
 nothing to Galaxy" an assertion about the network rather than about the UI.

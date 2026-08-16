@@ -1,7 +1,8 @@
 // Stands in for the provider and Galaxy; scripted per scenario via /__script.
 const http = require("http");
 
-let script = "confirm";     // confirm | slow | compact
+let script = "confirm";     // confirm | slow | compact | ratelimit
+let rateLimited = 0;
 let calls = 0;
 const seen = [];            // every Galaxy request the brain actually made
 const prompts = [];         // what the brain sent us, so compaction can be checked
@@ -36,6 +37,7 @@ const server = http.createServer(async (req, res) => {
     if (url.startsWith("/__script")) {
         script = new URL(url, "http://x").searchParams.get("name") || "confirm";
         calls = 0;
+        rateLimited = 0;
         seen.length = 0;
         return json(res, 200, { script });
     }
@@ -63,6 +65,21 @@ const server = http.createServer(async (req, res) => {
         const isSummarization = !prompts[prompts.length - 1].hasTools;
         if (isSummarization) {
             return json(res, 200, message("## Goal\nthe summarized goal"));
+        }
+        if (script === "ratelimit") {
+            // First call 429s with a stated delay, as Gemini does; then succeed.
+            if (rateLimited === 0) {
+                rateLimited = 1;
+                res.writeHead(429, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+                return res.end(JSON.stringify([{
+                    error: {
+                        code: 429,
+                        message: "You exceeded your current quota",
+                        details: [{ "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "6s" }],
+                    },
+                }]));
+            }
+            return json(res, 200, message("recovered after the wait"));
         }
         if (script === "slow") {
             // Long enough that Stop lands while the request is in flight.

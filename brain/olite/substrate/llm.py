@@ -24,7 +24,7 @@ class Llm:
         view.manifest = manifest
         return view
 
-    async def complete(self, messages, tools=None, tool_choice=None, parallel_tools=True, cancellation=None):
+    async def complete(self, messages, tools=None, tool_choice=None, parallel_tools=True, cancellation=None, on_retry=None):
         self.manifest.require("llm")
         await self._limiter.acquire()
         payload = {
@@ -38,4 +38,6 @@ class Llm:
             payload["tools"] = tools
         if tool_choice:
             payload["tool_choice"] = tool_choice
-        return await completions_post(payload, signal=cancellation.signal if cancellation else None)
+        return await completions_post(
+            payload, signal=cancellation.signal if cancellation else None, on_retry=on_retry
+        )

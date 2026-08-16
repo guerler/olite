@@ -12,7 +12,7 @@ TEMPERATURE = 0.3
 TOP_P = 0.8
 
 
-async def completions_post(payload, signal=None):
+async def completions_post(payload, signal=None, on_retry=None):
     api_key = payload.get("ai_api_key")
     base_url = payload.get("ai_base_url")
     base_url = base_url.rstrip("/") if base_url else ""
@@ -75,6 +75,7 @@ async def completions_post(payload, signal=None):
         headers=headers,
         body=body,
         signal=signal,
+        on_retry=on_retry,
     )
 
 

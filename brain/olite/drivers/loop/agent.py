@@ -66,7 +66,10 @@ class LoopDriver:
 
             try:
                 reply = await self.substrate.llm.complete(
-                    messages, tools=self.tools.schemas(), cancellation=cancellation
+                    messages,
+                    tools=self.tools.schemas(),
+                    cancellation=cancellation,
+                    on_retry=lambda info: _emit(on_event, {"type": "llm_retry", **info}),
                 )
             except Exception:
                 # The flag decides whether this was the abort, never the error text.

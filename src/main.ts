@@ -158,6 +158,9 @@ async function main() {
                 streamed.add(ev.id);
                 chat.hideThinking();
                 chat.addToolCard(ev.id, ev.name || "tool");
+            } else if (ev.type === "llm_retry") {
+                // A rate limit means a long silent wait; count it down instead.
+                startRetryCountdown(ev.status, ev.wait, ev.attempt, ev.of);
             } else if (ev.type === "compacted") {
                 // Never let history disappear without saying so.
                 chat.addInfoMessage("Summarized the earlier conversation to make room.");
@@ -189,6 +192,16 @@ async function main() {
                 chat.addErrorMessage(`Galaxy catalog did not load (root=${config.galaxy_root}): ${cat.error}`);
             }
             chat.hideThinking();
+            stopRetryCountdown();
+            if (reply.error) {
+                // The brain returns a failed turn as data; the console keeps the detail.
+                console.error("[olite] turn failed", reply.error);
+                chat.addErrorMessage(describeError(reply.error));
+                busy = false;
+                abortBtn.classList.add("hidden");
+                sendBtn.classList.remove("hidden");
+                return;
+            }
             // The brain names this turn's messages; compaction moves them, so no slicing.
             const spoke = renderMessages(chat, reply.new_messages || [], streamed);
             // Exactly one explanation for a quiet turn, most specific first.
@@ -214,11 +227,41 @@ async function main() {
             }
         } catch (e) {
             chat.hideThinking();
-            chat.addErrorMessage(String(e));
+            stopRetryCountdown();
+            chat.addErrorMessage(lastLine(String(e)));
         }
         abortBtn.classList.add("hidden");
         sendBtn.classList.remove("hidden");
         busy = false;
+    }
+
+    // A rate-limited turn waits tens of seconds; show the wait ticking down so the
+    // user can tell a slow provider from a hung one.
+    let retryTimer: ReturnType<typeof setInterval> | undefined;
+    let retryLine: HTMLElement | undefined;
+    function startRetryCountdown(status: number, wait: number, attempt: number, of: number) {
+        stopRetryCountdown();
+        let left = Math.ceil(wait);
+        const label = status === 429 ? "Rate limited by the model provider" : `Provider error ${status}`;
+        const render = () => `${label} — retrying in ${left}s (attempt ${attempt}/${of}).`;
+        retryLine = chat.addInfoMessage(render());
+        retryTimer = setInterval(() => {
+            left -= 1;
+            if (left <= 0) {
+                stopRetryCountdown();
+                return;
+            }
+            if (retryLine) {
+                retryLine.textContent = render();
+            }
+        }, 1000);
+    }
+    function stopRetryCountdown() {
+        if (retryTimer) {
+            clearInterval(retryTimer);
+            retryTimer = undefined;
+        }
+        retryLine = undefined;
     }
 
     function abortCurrentTurn() {
@@ -343,6 +386,24 @@ function renderMessages(chat: ChatPanel, messages: any[], streamed: Set<string> 
         }
     }
     return spoke;
+}
+
+/** The last meaningful line of a Python traceback, which is the actual error. */
+function lastLine(text: string): string {
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    return lines[lines.length - 1] || text;
+}
+
+/** A provider failure in words, not a status code and a wall of JSON. */
+function describeError(err: { message?: string; status_code?: number }): string {
+    const status = err.status_code;
+    if (status === 429) {
+        return "The model provider is out of quota for now. Wait, or switch provider (see the README).";
+    }
+    if (status === 401 || status === 403) {
+        return "The model provider rejected the credentials. Check LLM_KEY.";
+    }
+    return lastLine(err.message || "The turn failed.");
 }
 
 function toolStatus(content: string): "done" | "error" {
