@@ -2,6 +2,7 @@
 
 import logging
 
+from olite import config as config_module
 from olite import prompt
 from olite.drivers import LoopDriver
 from olite.registry import ProcessRegistry, SkillRegistry
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 async def run(config, inputs, on_event=None):
+    config = config_module.parse(config)
     substrate = await Substrate(config).init()
     processes = ProcessRegistry().load_packaged()
     skills = SkillRegistry().load_packaged()

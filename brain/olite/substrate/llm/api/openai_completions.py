@@ -6,6 +6,7 @@ the next one is a sibling of this file rather than an edit to the loop.
 """
 
 import json
+from dataclasses import dataclass, field
 
 MIN = 0.0000001
 MAX = 999999999
@@ -13,15 +14,15 @@ TEMPERATURE = 0.3
 TOP_P = 0.8
 
 
+@dataclass
 class Reply:
     """What the loop needs from a completion, named rather than dug out of JSON."""
 
-    def __init__(self, content="", tool_calls=None, finish_reason=None, usage=None, raw=None):
-        self.content = content
-        self.tool_calls = tool_calls or []
-        self.finish_reason = finish_reason
-        self.usage = usage or {}
-        self.raw = raw
+    content: str = ""
+    tool_calls: list = field(default_factory=list)
+    finish_reason: str | None = None
+    usage: dict = field(default_factory=dict)
+    raw: dict | None = None
 
 
 class OpenAICompletions:

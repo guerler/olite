@@ -2,6 +2,7 @@
 
 import json
 import logging
+from dataclasses import dataclass
 
 from olite.substrate import Confirmation
 
@@ -99,12 +100,12 @@ def _run_process_schema(processes):
     }
 
 
+@dataclass
 class ToolOutcome:
     """What a tool call produced, and whether it counts as a failure."""
 
-    def __init__(self, content, is_error=False):
-        self.content = content
-        self.is_error = is_error
+    content: object
+    is_error: bool = False
 
     @property
     def text(self):
