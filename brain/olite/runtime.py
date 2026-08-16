@@ -24,8 +24,7 @@ async def run(config, inputs, on_event=None):
     try:
         result = await driver.run(transcripts, on_event, cancellation.from_js())
     except Exception as e:
-        # A failed turn is a result, not a crash: the shell can say what went wrong,
-        # where a raised exception reaches the user as a Pyodide traceback.
+        # A failed turn is a result, not a crash.
         logger.exception("turn failed")
         return {
             "logs": [],

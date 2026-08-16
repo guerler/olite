@@ -17,9 +17,7 @@ export function createConfirm(deps: ConfirmDeps) {
     const accept = container.querySelector<HTMLButtonElement>("#ext-accept")!;
     const deny = container.querySelector<HTMLButtonElement>("#ext-deny")!;
 
-    // One at a time, listeners torn down on answer, Escape reads as no. There is no
-    // Cancel: the question is only asked about something irreversible, so dismissing
-    // it must not be distinguishable from declining it.
+    // One at a time, listeners torn down on answer, Escape reads as no.
     return function show(confirmId: string, request: any) {
         title.textContent = request?.title || "Confirm";
         message.textContent = request?.message || "";

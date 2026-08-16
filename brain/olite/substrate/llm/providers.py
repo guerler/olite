@@ -1,9 +1,4 @@
-"""Which endpoint olite talks to, and what that endpoint's properties are.
-
-Modelled on pi's `createProvider`: an entry names its dialect, its base URL, where its
-key comes from, and the models it serves. olite adds `limits`, because an endpoint's
-caps are facts the brain has to plan around rather than discover in production.
-"""
+"""Which endpoint olite talks to, and what that endpoint's properties are."""
 
 import os
 from dataclasses import dataclass, field
@@ -54,8 +49,7 @@ class Provider:
         return self.models.get(model_id) or Model(model_id)
 
 
-# Galaxy's own caps, read from lib/galaxy/webapps/galaxy/api/plugins.py. Hard-coded
-# because Galaxy exposes no endpoint for them; revisit if it ever does.
+# Galaxy's own caps, from lib/galaxy/webapps/galaxy/api/plugins.py.
 GALAXY = Provider(
     id="galaxy",
     name="Galaxy chat proxy",
@@ -83,8 +77,7 @@ DEEPSEEK = Provider(
     models={"deepseek-v4-flash": Model("deepseek-v4-flash", context_window=1_000_000)},
 )
 
-# llama.cpp and Ollama both serve here and ignore the model name, so the window is a
-# property of whatever is loaded rather than of any model id.
+# llama.cpp and Ollama ignore the model name, so the window belongs to the server.
 LOCAL = Provider(
     id="local",
     name="Local OpenAI-compatible server",
@@ -130,11 +123,7 @@ def _first(*values):
 
 
 def resolve(config):
-    """The endpoint this config points at.
-
-    `ai_provider` names a registry entry; failing that a base URL means a custom
-    provider, as in pi; failing that it is Galaxy's proxy.
-    """
+    """The endpoint this config points at: named provider, else custom, else Galaxy."""
     config = config or {}
     named = config.get("ai_provider")
     base_url = config.get("ai_base_url")

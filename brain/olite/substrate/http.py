@@ -17,10 +17,7 @@ RETRY_INFO_TYPE = "type.googleapis.com/google.rpc.RetryInfo"
 
 
 def retry_after(headers, body):
-    """The delay the server asked for, or None; capped so a bad value cannot hang.
-
-    Sources in order of how standard they are, not by provider.
-    """
+    """The delay the server asked for, or None; sources ordered by how standard they are."""
     for source in (_retry_after_header, _retry_after_ms_header, _google_retry_info):
         stated = source(headers if source is not _google_retry_info else body)
         if stated is not None:

@@ -291,7 +291,7 @@ def test_the_loop_compacts_before_it_asks_and_the_shell_is_told():
 
 
 def test_a_compacted_turn_still_reports_what_it_produced():
-    """Found in the browser: the shell used to locate this turn's messages positionally."""
+    """The turn reports its own messages, so compaction cannot lose them."""
     config = {"ai_context_window": 1000, "ai_reserve_tokens": 200, "ai_keep_recent_tokens": 200}
     llm = ScriptedLlm()
     driver = LoopDriver(FakeSubstrate(llm, config))

@@ -1,9 +1,4 @@
-"""Config is validated where it enters the brain, because that is where it comes from outside.
-
-The plugin manifest, `data-incoming` and the dev environment variables are all outside
-the brain's control. Before this, a wrong type travelled until something compared an
-int to a string; `ai_context_window: "lots"` was accepted and failed later, elsewhere.
-"""
+"""Config is validated where it enters the brain."""
 
 import pytest
 from pydantic import ValidationError

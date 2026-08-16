@@ -9,7 +9,6 @@ export function buildConfig(incoming: ReturnType<typeof parseIncoming>) {
         ai_base_url: s.ai_api_base_url || `${incoming.root}api/plugins/${PLUGIN_NAME}`,
         ai_api_key: s.ai_api_key,
         // Names a built-in provider, so the brain gets its limits and context window.
-        // Falling back to Galaxy's proxy IS a provider, and a capped one, so say so.
         ai_provider: (process.env.llm_provider as string) || (s.ai_api_base_url ? undefined : "galaxy"),
         // Dev only: switch model by env instead of editing a committed file.
         ai_model: (process.env.llm_model as string) || s.ai_model,

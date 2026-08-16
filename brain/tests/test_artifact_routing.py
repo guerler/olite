@@ -85,5 +85,5 @@ def test_lineage_report_declares_its_diagram_as_a_mermaid_artifact():
     assert output["artifact"]["diagram"] == {"$ref": "state.mermaid"}
     # The narrative still goes to the model.
     assert output["summary"] == {"$ref": "state.summary"}
-    # The raw diagram is no longer a top-level output field.
+    # The diagram travels as an artifact, not as a top-level output field.
     assert "mermaid" not in output

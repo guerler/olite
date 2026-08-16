@@ -16,8 +16,7 @@ class Llm:
         self.manifest = manifest
         self.target = resolve(config)
         self.adapter = get_adapter(self.target.api)
-        # The rate comes from the endpoint; the bucket stays owned here so a scoped
-        # view cannot hand a process a fresh budget.
+        # The rate comes from the endpoint; one bucket per session, shared by scoped views.
         from ..rate_limiter import TokenBucketRateLimiter
 
         self._limiter = TokenBucketRateLimiter.from_requests_per_minute(self.target.rate_limit)

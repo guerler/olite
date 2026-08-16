@@ -1,9 +1,4 @@
-"""The OpenAI chat-completions dialect.
-
-Galaxy's chat proxy speaks it, and so do Gemini's shim, DeepSeek, LiteLLM and
-llama.cpp. It is the only dialect olite needs today; the point of the Api seam is that
-the next one is a sibling of this file rather than an edit to the loop.
-"""
+"""The OpenAI chat-completions dialect."""
 
 import json
 from dataclasses import dataclass, field

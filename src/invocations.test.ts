@@ -37,8 +37,7 @@ describe("extractWatched", () => {
 
 describe("terminal states", () => {
     it("treats a scheduled invocation as still running", () => {
-        // `scheduled` means every step was scheduled, NOT that the jobs finished.
-        // Reporting it as done would tell the user their analysis is complete early.
+        // `scheduled` means every step was scheduled, not that the jobs finished.
         expect(isTerminal("invocation", "scheduled")).toBe(false);
         expect(isTerminal("invocation", "failed")).toBe(true);
         expect(isTerminal("invocation", "cancelled")).toBe(true);

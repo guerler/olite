@@ -60,7 +60,7 @@ class LoopDriver:
             if status == compaction.COMPACTED:
                 logs.append("compacted the conversation")
                 _emit(on_event, {"type": "compacted"})
-                # The measurement indexed a transcript that no longer exists.
+                # The index it carried does not point into the rewritten transcript.
                 measured = None
             elif status == compaction.IMPOSSIBLE and not reported_overflow:
                 # Once per turn: the condition persists and would bury the output.

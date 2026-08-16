@@ -209,8 +209,7 @@ async function main() {
                 // Orbit has no step cap; olite's must not look like completion.
                 chat.addInfoMessage("I ran out of steps for one turn while still working. Say \"continue\" to pick it up.");
             } else if (!spoke && !reply.done) {
-                // A reply with no tool calls ends the loop, even with no text either.
-                // `done` means the model called finish, whose summary is its reply.
+                // A reply with no tool calls ends the loop; `done` means finish was called.
                 chat.addInfoMessage("The model ended the turn without a reply. Ask again, or rephrase.");
             }
             convo.length = 0;
@@ -233,8 +232,7 @@ async function main() {
         busy = false;
     }
 
-    // A rate-limited turn waits tens of seconds; show the wait ticking down so the
-    // user can tell a slow provider from a hung one.
+    // Tick the wait down, so a slow provider is distinguishable from a hung one.
     let retryTimer: ReturnType<typeof setInterval> | undefined;
     let retryLine: HTMLElement | undefined;
     function startRetryCountdown(status: number, wait: number, attempt: number, of: number) {

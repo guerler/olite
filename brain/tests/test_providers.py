@@ -40,7 +40,7 @@ def test_an_explicit_base_url_overrides_the_provider_default():
     assert target.base_url == "http://proxy.invalid/v1"
 
 
-# --- the numbers that used to be hand-set ---------------------------------------
+# --- the numbers the endpoint supplies -------------------------------------------
 
 
 def test_galaxys_token_cap_reaches_the_request():

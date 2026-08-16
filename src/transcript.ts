@@ -5,8 +5,7 @@ import { ChatPanel } from "./orbit/chat/chat-panel";
 export function renderMessages(chat: ChatPanel, messages: any[], streamed: Set<string> = new Set()): boolean {
     let spoke = false;
     for (const m of messages) {
-        // `finish` carries the model's closing words in a tool argument rather than in
-        // content, so render its summary as the reply or the turn ends showing nothing.
+        // `finish` puts the model's closing words in a tool argument, not in content.
         if (m.role === "tool" && m.name === "finish" && m.content) {
             spoke = true;
             say(chat, m.content);

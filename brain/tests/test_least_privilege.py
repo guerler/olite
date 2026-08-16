@@ -83,7 +83,7 @@ def test_a_view_shares_state_rather_than_resetting_it():
 
     # Same interpreter namespace, not a fresh one.
     assert view.local.run("x + 1") == "42"
-    # Same rate limiter, so scoping cannot be used to bypass the session's limit.
+    # One rate limiter per session, shared by every scoped view.
     assert view.llm._limiter is substrate.llm._limiter
     # Same loaded spec, so scoping costs no network round trip.
     assert view.catalog._providers is substrate.catalog._providers

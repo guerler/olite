@@ -1,10 +1,4 @@
-"""What the shell hands the brain, validated once at the boundary.
-
-Everything here arrives from outside the brain — the plugin manifest, `data-incoming`,
-dev environment variables — so it is the one place untrusted shapes enter. A wrong
-type used to travel until something compared an int to a string; now it fails here,
-naming the key.
-"""
+"""What the shell hands the brain, validated once at the boundary."""
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -27,8 +21,7 @@ class Config(BaseModel):
 
     capabilities: list[str] | None = None
 
-    # Reject unknown keys: a typo in a manifest is otherwise silently ignored, which
-    # is how a setting appears to have no effect.
+    # Reject unknown keys, so a typo in a manifest is not silently ignored.
     model_config = {"extra": "forbid"}
 
     @field_validator("capabilities")

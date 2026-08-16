@@ -96,11 +96,7 @@ Keep each section concise. Preserve exact file paths, function names, and error 
 
 class Settings:
     def __init__(self, config=None, target=None):
-        """`target` is the resolved endpoint; it supplies the window and the reserve.
-
-        The reserve is headroom for the reply, so it is exactly the `max_tokens` the
-        request will carry — which the endpoint may cap below what we asked for.
-        """
+        """The reserve is the `max_tokens` the request carries, capped by the endpoint."""
         config = config or {}
         self.enabled = config.get("ai_compaction", True)
         self.context_window = (

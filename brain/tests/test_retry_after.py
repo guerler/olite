@@ -73,7 +73,7 @@ def test_a_malformed_header_falls_through_rather_than_raising():
 
 
 def test_the_delay_the_old_code_would_have_used_was_too_short():
-    """The bug this closes: 3s of backoff against a server asking for 14."""
+    """A guessed backoff is shorter than what a rate limiter asks for."""
     from olite.substrate.http import INITIAL_BACKOFF, MAX_RETRIES
 
     guessed = sum(INITIAL_BACKOFF * (2**a) for a in range(MAX_RETRIES - 1))

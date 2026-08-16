@@ -1,9 +1,4 @@
-"""agent.yml is validated when it loads, against the pydantic grammar in olite/schema.py.
-
-The grammar existed for months with no importer, so it had drifted: it did not know
-about `when_to_use` or `capabilities`, both of which the shipped processes use. Nothing
-noticed, because nothing validated. These tests are what keeps that from recurring.
-"""
+"""agent.yml is validated on load against the grammar in olite/schema.py."""
 
 import pytest
 import yaml

@@ -43,8 +43,7 @@ class Registry:
                 raise NodeExecutionError("Reasoning node produced empty output")
             return content
 
-        # Transport failures are retried once, in the HTTP layer, with the delay the
-        # server stated. Anything that reaches here is not worth trying again.
+        # Transport failures are retried in the HTTP layer; these are not worth a retry.
         try:
             return await attempt()
         except NodeExecutionError:
