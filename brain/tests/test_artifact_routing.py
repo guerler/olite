@@ -21,7 +21,7 @@ class FakeSubstrate:
     llm = None
 
     def scoped(self, capabilities):
-        # Routing is what these tests are about; the real narrowing is covered by
+        # Routing is what these tests are about, not the narrowing itself.
         return self
 
 
@@ -37,7 +37,7 @@ def _terminal_graph(output):
 
 
 def _run(surface):
-    return json.loads(asyncio.run(surface.dispatch("run_process", {"name": "p", "inputs": {}})))
+    return json.loads(asyncio.run(surface.dispatch("run_process", {"name": "p", "inputs": {}})).text)
 
 
 def test_artifact_is_routed_out_of_band_and_reduced_to_a_reference():

@@ -193,7 +193,7 @@ def test_run_process_surfaces_graph_failure_not_null():
             return self
 
     surface = ToolSurface(Sub(), ProcessRegistry().load_packaged())
-    out = asyncio.run(surface.dispatch("run_process", {"name": "visualize_dataset", "inputs": {"dataset_id": "d1"}}))
+    out = asyncio.run(surface.dispatch("run_process", {"name": "visualize_dataset", "inputs": {"dataset_id": "d1"}})).text
     payload = json.loads(out)
     assert payload["ok"] is False
     assert payload["error"]["code"] == "catalog_unavailable"
@@ -214,7 +214,7 @@ def test_choose_shell_and_fill_schemas_are_state_derived():
 
 
 class LoopLlm:
-    """A loop-level model: calls run_process once, then finishes. Also serves the"""
+    """A loop-level model: calls run_process once, then finishes."""
 
     def __init__(self, decisions):
         self.decisions = decisions

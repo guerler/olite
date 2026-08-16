@@ -1,4 +1,4 @@
-"""The loop's Galaxy surface is Orbit's named tools (cloned from galaxy-mcp),"""
+"""The loop's Galaxy surface is Orbit's named tools, cloned from galaxy-mcp."""
 
 import asyncio
 import json
@@ -70,7 +70,7 @@ def test_get_histories_hits_the_right_endpoint():
 def test_run_tool_posts_to_api_tools_and_needs_write():
     # read-only: run_tool routes to GalaxyHttp.post -> require('write') -> raises -> caught.
     sub = FakeSubstrate(("read",))
-    out = asyncio.run(ToolSurface(sub).dispatch("run_tool", {"history_id": "h", "tool_id": "cat1", "inputs": {}}))
+    out = asyncio.run(ToolSurface(sub).dispatch("run_tool", {"history_id": "h", "tool_id": "cat1", "inputs": {}})).text
     assert "not granted" in out
     # with write: posts to the legacy /api/tools route.
     sub2 = FakeSubstrate(("read", "write"))

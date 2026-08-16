@@ -84,7 +84,7 @@ def test_a_lookalike_call_reaches_the_real_tool():
     substrate = FakeSubstrate(("local",))
     surface = ToolSurface(substrate)
 
-    result = asyncio.run(surface.dispatch(SNEAKY, {"code": "6*7"}))
+    result = asyncio.run(surface.dispatch(SNEAKY, {"code": "6*7"})).text
 
     assert result == "42"
     assert substrate.local.ran == ["6*7"], "the real tool did not run"
@@ -92,7 +92,7 @@ def test_a_lookalike_call_reaches_the_real_tool():
 
 def test_an_unknown_name_still_reports_unknown():
     surface = ToolSurface(FakeSubstrate(("local",)))
-    assert "Unknown tool" in asyncio.run(surface.dispatch("no_such_tool", {}))
+    assert "Unknown tool" in asyncio.run(surface.dispatch("no_such_tool", {})).text
 
 
 def test_folding_cannot_reach_a_tool_the_session_was_not_offered():
@@ -101,7 +101,7 @@ def test_folding_cannot_reach_a_tool_the_session_was_not_offered():
     advertised = [t["function"]["name"] for t in surface.schemas()]
     assert "run_tool" not in advertised, "fixture assumption: run_tool is write-gated"
 
-    out = asyncio.run(surface.dispatch("run_tоol", {}))
+    out = asyncio.run(surface.dispatch("run_tоol", {})).text
     assert "Unknown tool" in out
 
 
@@ -112,5 +112,5 @@ def test_a_lookalike_process_name_reaches_run_process():
                              "nodes": {"d": {"type": "terminal", "output": {"ok": 1}}}})
     surface = ToolSurface(FakeSubstrate(("local",)), processes)
 
-    out = json.loads(asyncio.run(surface.dispatch("run_proсess", {"name": "p", "inputs": {}})))
+    out = json.loads(asyncio.run(surface.dispatch("run_proсess", {"name": "p", "inputs": {}})).text)
     assert out == {"ok": 1}

@@ -1,4 +1,4 @@
-"""Tool surface for the loop driver."""
+"""Tool surface for the loop driver: named Galaxy tools, run_python, finish, processes."""
 
 import json
 import logging
@@ -47,7 +47,7 @@ FINISH = {
 
 
 def _skills_fetch_schema(skills):
-    """Orbit's `skills_fetch` signature: addressed by repo-relative path, not by name."""
+    """Orbit's `skills_fetch`: addressed by repo-relative path, not by name."""
     return {
         "type": "function",
         "function": {
@@ -101,21 +101,33 @@ def _run_process_schema(processes):
     }
 
 
+class ToolOutcome:
+    """What a tool call produced, and whether it counts as a failure."""
+
+    def __init__(self, content, is_error=False):
+        self.content = content
+        self.is_error = is_error
+
+    @property
+    def text(self):
+        return self.content if isinstance(self.content, str) else json.dumps(self.content)
+
+
 class ToolSurface:
     def __init__(self, substrate, processes=None, skills=None, confirmation=None):
         self.substrate = substrate
         self.processes = processes
         self.skills = skills
-        # How the surface reaches the user for an approval. Unavailable by default,
+        # Unavailable by default, which makes the destructive gate refuse headlessly.
         self.confirmation = confirmation or Confirmation()
-        # Renderable artifacts produced by tools this turn (e.g. a chart from a
+        # Renderable artifacts, routed to the shell so no large payload hits the LLM.
         self.artifacts = []
 
     def schemas(self):
         tools = [RUN_PYTHON]
         tools.extend(galaxy_tools.tool_schemas(self.substrate.manifest))
         tools.extend(notebook.tool_schemas(self.substrate.manifest))
-        # GTN is public training material on one allowlisted host, not Galaxy, so it
+        # Not manifest-gated: the hostname allowlist is the boundary, as in loom.
         tools.extend(gtn.tool_schemas())
         tools.append(FINISH)
         if self.skills and self.skills.names():
@@ -125,7 +137,7 @@ class ToolSurface:
         return tools
 
     def _missing_required(self, name, args):
-        """Required parameters the call left out, per the schema it was given."""
+        """Required parameters the call left out; presence only, not types."""
         schema = next((t for t in self.schemas() if t["function"]["name"] == name), None)
         if schema is None:
             return []  # unknown name: not ours to validate, and it may still fold
@@ -133,26 +145,33 @@ class ToolSurface:
         return [key for key in required if key not in args]
 
     async def dispatch(self, name, args):
+        """Run one tool call. Always a ToolOutcome — never a raised exception."""
         logger.info("tool %s(%s)", name, _brief(args))
         missing = self._missing_required(name, args)
         if missing:
             logger.info("  -> missing required %s", missing)
-            return f"Tool '{name}' was not called: missing required parameter(s): {', '.join(missing)}."
+            return ToolOutcome(
+                f"Tool '{name}' was not called: missing required parameter(s): {', '.join(missing)}.",
+                is_error=True,
+            )
         try:
             result = await self._dispatch(name, args)
+            if isinstance(result, ToolOutcome):
+                logger.info("  -> %s", _brief(result.content))
+                return result
             logger.info("  -> %s", _brief(result))
-            return result
+            return ToolOutcome(result)
         except Exception as e:
             logger.warning("tool %s raised: %s", name, e)
-            return f"Tool '{name}' raised: {e}"
+            return ToolOutcome(f"Tool '{name}' raised: {e}", is_error=True)
 
     async def _dispatch(self, name, args):
-        # Destructive Galaxy ops are refused before anything else, for the reason
+        # First, so the confusables fold below cannot route around it.
         destructive = galaxy_destructive.classify(name, args)
         if destructive is not None:
             refusal = await self._gate_destructive(name, destructive)
             if refusal is not None:
-                return refusal
+                return ToolOutcome(refusal, is_error=True)
 
         if name == "run_python":
             return self.substrate.local.run(args.get("code", ""))
@@ -168,15 +187,15 @@ class ToolSurface:
         gtn_handler = gtn.get_handler(name)
         if gtn_handler:
             return json.dumps(await gtn_handler(args), default=str)
-        # Last resort before giving up: the name may be right but spelled with
+        # Last resort: the name may be spelled with Cyrillic/Greek lookalikes.
         folded = self._fold_tool_name(name)
         if folded:
             logger.info("tool name %r folded to %r (unicode confusables)", name, folded)
             return await self._dispatch(folded, args)
-        return f"Unknown tool: {name}"
+        return ToolOutcome(f"Unknown tool: {name}", is_error=True)
 
     async def _gate_destructive(self, name, op):
-        """Why this destructive operation must not run, or None if the user said yes."""
+        """Why this must not run, or None if the user approved; never cached."""
         headline = galaxy_destructive.describe(op)
         if not self.confirmation.available:
             logger.warning("refused destructive op %s: no way to ask", name)
@@ -191,45 +210,50 @@ class ToolSurface:
         return None
 
     def _fold_tool_name(self, name):
-        """The advertised tool `name` was meant to be, or None."""
+        """The advertised tool `name` meant, or None; folds only what is advertised."""
         if not confusables.has_confusables(name or ""):
             return None
         advertised = [t["function"]["name"] for t in self.schemas()]
         return confusables.find_match(name, advertised)
 
     def _skills_fetch(self, args):
-        """Second half of progressive disclosure: hand over one file, whole."""
+        """Second half of progressive disclosure: one file, whole and untruncated."""
         path = args.get("path")
         repo_name = args.get("repo")
         if not self.skills:
-            return "Error: No skills repos are available."
+            return ToolOutcome("Error: No skills repos are available.", is_error=True)
         repo = self.skills.find(repo_name)
         if repo is None:
-            return f"Error: Skills repo \"{repo_name}\" is not configured. Available: {', '.join(self.skills.names())}."
+            return ToolOutcome(
+                f"Error: Skills repo \"{repo_name}\" is not configured. "
+                f"Available: {', '.join(self.skills.names())}.",
+                is_error=True,
+            )
         text = repo.read(path)
         if text is None:
-            return (
+            return ToolOutcome(
                 f'Error: Failed to fetch "{path}" from {repo.name}. '
-                "Check the path against the skills router in the system prompt."
+                "Check the path against the skills router in the system prompt.",
+                is_error=True,
             )
         return text
 
     async def _run_process(self, args):
         proc = self.processes.get(args.get("name")) if self.processes else None
         if not proc:
-            return json.dumps({"error": f"unknown process: {args.get('name')}"})
+            return ToolOutcome(json.dumps({"error": f"unknown process: {args.get('name')}"}), is_error=True)
         from olite.drivers.graph import GraphDriver
         import olite.registry.materializers  # noqa: F401  (registers materializers + vintent bridge)
 
-        # Least privilege: the process runs under its own declared manifest,
+        # Least privilege: the process manifest, intersected with the session's.
         substrate = self.substrate.scoped(proc.capabilities)
         result = await GraphDriver(substrate).run(proc.graph, args.get("inputs") or {})
         last = result.get("last") or {}
-        # Surface a failed graph to the model rather than returning a bare null.
+        # Surface a failed graph rather than returning a bare null.
         if last.get("ok") is False:
-            return json.dumps({"ok": False, "error": last.get("error")})
+            return ToolOutcome(json.dumps({"ok": False, "error": last.get("error")}), is_error=True)
         output = last.get("result")
-        # A process may return a renderable artifact. Route it to the shell out of
+        # A renderable artifact goes to the shell out of band, not into the context.
         if isinstance(output, dict) and isinstance(output.get("artifact"), dict):
             art = dict(output["artifact"])
             self.artifacts.append(art)

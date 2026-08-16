@@ -208,6 +208,6 @@ def test_both_tools_are_advertised_even_with_nothing_granted(net):
 
 def test_the_surface_dispatches_to_the_gtn_handlers(net):
     surface = ToolSurface(FakeSubstrate())
-    out = json.loads(asyncio.run(surface.dispatch("gtn_search", {})))
+    out = json.loads(asyncio.run(surface.dispatch("gtn_search", {})).text)
 
     assert out["count"] == 2

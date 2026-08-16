@@ -164,7 +164,9 @@ async function main() {
                 chat.hideThinking();
                 chat.addToolCard(ev.id, ev.name || "tool");
             } else if (ev.type === "tool_end") {
-                chat.updateToolCard(ev.id, toolStatus(ev.content || ""), ev.content || "");
+                // The brain states whether the call failed (pi carries `isError` the
+                const status = ev.is_error ? "error" : toolStatus(ev.content || "");
+                chat.updateToolCard(ev.id, status, ev.content || "");
                 // Galaxy returns the job/invocation ids in the submission response,
                 watcher.ingest(ev.name || "", ev.content || "");
             }
@@ -184,16 +186,15 @@ async function main() {
             }
             chat.hideThinking();
             const spoke = renderMessages(chat, (reply.messages || []).slice(sent), streamed);
-            // The loop ends as soon as a reply carries no tool calls — including
-            if (!spoke) {
-                chat.addInfoMessage("The model ended the turn without a reply. Ask again, or rephrase.");
-            }
-            // The turn hit the step cap with the agent still working. Orbit has no cap
-            if (reply.exhausted) {
-                chat.addInfoMessage("I ran out of steps for one turn while still working. Say \"continue\" to pick it up.");
-            }
+            // Exactly one explanation for a turn that produced no reply, most
             if (reply.aborted) {
                 chat.addInfoMessage("Stopped.");
+            } else if (reply.exhausted) {
+                // Orbit has no step cap and so no equivalent state; olite's must not
+                chat.addInfoMessage("I ran out of steps for one turn while still working. Say \"continue\" to pick it up.");
+            } else if (!spoke) {
+                // The loop ends as soon as a reply carries no tool calls — including
+                chat.addInfoMessage("The model ended the turn without a reply. Ask again, or rephrase.");
             }
             convo.length = 0;
             convo.push(...trimConvo(reply.messages || []));

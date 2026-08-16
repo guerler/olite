@@ -95,12 +95,12 @@ class LoopDriver:
                 _emit(on_event, {"type": "tool_start", "id": call_id, "name": name})
                 if refusal is not None:
                     logs.append(f"refuse {name}: {refusal}")
-                    content = refusal
+                    content, is_error = refusal, True
                 else:
                     logs.append(f"call {name}({_brief(args)})")
-                    result = await self.tools.dispatch(name, args)
-                    logs.append(f"  -> {_brief(result)}")
-                    content = result if isinstance(result, str) else json.dumps(result)
+                    outcome = await self.tools.dispatch(name, args)
+                    logs.append(f"  -> {_brief(outcome.content)}")
+                    content, is_error = outcome.text, outcome.is_error
                 messages.append(
                     {
                         "role": "tool",
@@ -109,7 +109,11 @@ class LoopDriver:
                         "content": content,
                     }
                 )
-                _emit(on_event, {"type": "tool_end", "id": call_id, "name": name, "content": content})
+                # `is_error` rides the event as pi carries `isError` on
+                _emit(
+                    on_event,
+                    {"type": "tool_end", "id": call_id, "name": name, "content": content, "is_error": is_error},
+                )
 
                 # Only an executed `finish` ends the loop. A refused one was never
                 terminating.append(name == "finish" and refusal is None)

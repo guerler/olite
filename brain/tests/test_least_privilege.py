@@ -132,7 +132,7 @@ def test_a_read_only_process_cannot_write_from_a_write_enabled_session():
     processes.register("probe", _capability_probe_graph(), capabilities=["llm", "read"])
     surface = ToolSurface(substrate, processes)
 
-    raw = asyncio.run(surface.dispatch("run_process", {"name": "probe", "inputs": {}}))
+    raw = asyncio.run(surface.dispatch("run_process", {"name": "probe", "inputs": {}})).text
 
     assert substrate.scoped_with == [["llm", "read"]]
     # The catalog refuses the write op rather than performing it.

@@ -35,7 +35,7 @@ class FakeSubstrate:
 def _dispatch(name, args, confirmation=None):
     substrate = FakeSubstrate()
     surface = ToolSurface(substrate, confirmation=confirmation)
-    return asyncio.run(surface.dispatch(name, args)), substrate.galaxy
+    return asyncio.run(surface.dispatch(name, args)).text, substrate.galaxy
 
 
 class Asked:
@@ -114,7 +114,7 @@ def test_unrelated_tools_are_not_classified():
 
 
 def test_an_approved_delete_reaches_galaxy():
-    """Orbit's local mode confirms and then proceeds; only its remote mode, which"""
+    """Orbit's local mode confirms and then proceeds; only remote mode blocks outright."""
     user = Asked(answer=True)
     result, galaxy = _dispatch("update_history", {"history_id": "h1", "deleted": True}, user.confirmation)
 
@@ -141,7 +141,7 @@ def test_the_question_carries_the_honest_headline():
 
 
 def test_approval_is_never_remembered_between_calls():
-    """loom: a destructive op is never cached and never offered "allow for session"""
+    """loom never caches a destructive op; every irreversible action re-prompts."""
     user = Asked(answer=True)
     substrate = FakeSubstrate()
     surface = ToolSurface(substrate, confirmation=user.confirmation)

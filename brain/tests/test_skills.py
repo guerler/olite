@@ -134,14 +134,14 @@ def test_skills_fetch_returns_a_reference_file_beside_the_skill(tmp_path):
     )
     surface = ToolSurface(FakeSubstrate(), None, registry)
 
-    result = asyncio.run(surface.dispatch("skills_fetch", {"path": "a/references/gotchas.md"}))
+    result = asyncio.run(surface.dispatch("skills_fetch", {"path": "a/references/gotchas.md"})).text
     assert "classic trap" in result
 
 
 def test_a_missing_path_reports_an_error_rather_than_nothing(tmp_path):
     surface = ToolSurface(FakeSubstrate(), None, _corpus(tmp_path, {"a/SKILL.md": SKILL}))
 
-    result = asyncio.run(surface.dispatch("skills_fetch", {"path": "a/nope.md"}))
+    result = asyncio.run(surface.dispatch("skills_fetch", {"path": "a/nope.md"})).text
     assert "Error" in result and "nope.md" in result
 
 
@@ -149,7 +149,7 @@ def test_traversal_out_of_the_corpus_is_refused(tmp_path):
     (tmp_path.parent / "secret.md").write_text("not part of the corpus")
     surface = ToolSurface(FakeSubstrate(), None, _corpus(tmp_path, {"a/SKILL.md": SKILL}))
 
-    result = asyncio.run(surface.dispatch("skills_fetch", {"path": "../secret.md"}))
+    result = asyncio.run(surface.dispatch("skills_fetch", {"path": "../secret.md"})).text
     assert "Error" in result
     assert "not part of the corpus" not in result
 
@@ -164,7 +164,7 @@ def test_tool_results_are_not_truncated(tmp_path):
     body = "---\nname: long\nmetadata:\n  surfaces: [loom]\n---\n\n" + ("step. " * 2000)
     surface = ToolSurface(FakeSubstrate(), None, _corpus(tmp_path, {"a/SKILL.md": body}))
 
-    result = asyncio.run(surface.dispatch("skills_fetch", {"path": "a/SKILL.md"}))
+    result = asyncio.run(surface.dispatch("skills_fetch", {"path": "a/SKILL.md"})).text
     assert len(result) > 10000
     assert "truncated" not in result
 
