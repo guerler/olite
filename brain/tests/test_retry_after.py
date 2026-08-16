@@ -1,6 +1,6 @@
 """A rate limiter states how long to wait, and the retry has to honour it."""
 
-from olite.substrate.http import MAX_RETRY_AFTER, retry_after
+from olite.substrate.http import MAX_RETRY_AFTER, RETRY_INFO_TYPE, retry_after
 
 GEMINI_429 = [
     {
@@ -18,6 +18,32 @@ GEMINI_429 = [
 
 def test_the_standard_header_wins():
     assert retry_after({"Retry-After": "30"}, None) == 30.0
+
+
+def test_header_casing_does_not_matter():
+    """Nobody guarantees casing, and fetch lowercases on the way through."""
+    assert retry_after({"retry-after": "30"}, None) == 30.0
+    assert retry_after({"RETRY-AFTER": "30"}, None) == 30.0
+
+
+def test_the_http_date_form_is_understood():
+    """RFC 9110 allows a date as well as delta-seconds; both are in the wild."""
+    from datetime import datetime, timedelta, timezone
+
+    soon = datetime.now(timezone.utc) + timedelta(seconds=20)
+    stamp = soon.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    assert 15 <= retry_after({"Retry-After": stamp}, None) <= 25
+
+
+def test_openais_millisecond_header_is_understood():
+    """OpenAI sends `retry-after-ms`, sometimes without the seconds form."""
+    assert retry_after({"retry-after-ms": "2500"}, None) == 2.5
+
+
+def test_the_standard_header_beats_the_provider_specific_body():
+    """Order is by how standard a source is, not by which provider we saw last."""
+    body = [{"error": {"details": [{"@type": RETRY_INFO_TYPE, "retryDelay": "14s"}]}}]
+    assert retry_after({"Retry-After": "3"}, body) == 3.0
 
 
 def test_google_states_the_delay_in_the_body_not_a_header():

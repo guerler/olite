@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from datetime import datetime, timezone
 
 from .exceptions import HttpError
 
@@ -16,23 +17,64 @@ RETRY_INFO_TYPE = "type.googleapis.com/google.rpc.RetryInfo"
 
 
 def retry_after(headers, body):
-    """The delay the server asked for, or None; capped so a bad value cannot hang."""
-    stated = None
-    try:
-        raw = headers.get("Retry-After") if headers else None
-        if raw:
-            stated = float(str(raw).strip())
-    except (ValueError, AttributeError):
-        stated = None
-    if stated is None:
-        stated = _google_retry_info(body)
-    if stated is None:
+    """The delay the server asked for, or None; capped so a bad value cannot hang.
+
+    Sources in order of how standard they are, not by provider.
+    """
+    for source in (_retry_after_header, _retry_after_ms_header, _google_retry_info):
+        stated = source(headers if source is not _google_retry_info else body)
+        if stated is not None:
+            return max(0.0, min(stated, MAX_RETRY_AFTER))
+    return None
+
+
+def _header(headers, name):
+    """Case-insensitive lookup; header casing is not guaranteed by anyone."""
+    if not headers:
         return None
-    return max(0.0, min(stated, MAX_RETRY_AFTER))
+    try:
+        for key, value in headers.items():
+            if key and key.lower() == name and value:
+                return value
+    except AttributeError:
+        return None
+    return None
+
+
+def _retry_after_header(headers):
+    """RFC 9110 `Retry-After`: delta-seconds or an HTTP-date. Both are in the wild."""
+    raw = _header(headers, "retry-after")
+    if raw is None:
+        return None
+    raw = str(raw).strip()
+    try:
+        return float(raw)
+    except ValueError:
+        pass
+    try:
+        from email.utils import parsedate_to_datetime
+
+        when = parsedate_to_datetime(raw)
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        return (when - datetime.now(timezone.utc)).total_seconds()
+    except Exception:
+        return None
+
+
+def _retry_after_ms_header(headers):
+    """OpenAI sends `retry-after-ms` alongside, and sometimes instead of, the seconds form."""
+    raw = _header(headers, "retry-after-ms")
+    if raw is None:
+        return None
+    try:
+        return float(str(raw).strip()) / 1000.0
+    except ValueError:
+        return None
 
 
 def _google_retry_info(body):
-    """Google states the delay in a typed RetryInfo detail rather than a header."""
+    """Google states the delay in a typed RetryInfo detail and sends no header at all."""
     payload = body
     if isinstance(payload, str):
         try:
@@ -93,7 +135,10 @@ async def parse_response(response):
 def _js_headers(response):
     """A dict-like view of fetch's Headers, or None when it cannot be read."""
     try:
-        return {"Retry-After": response.headers.get("Retry-After")}
+        return {
+            "retry-after": response.headers.get("Retry-After"),
+            "retry-after-ms": response.headers.get("retry-after-ms"),
+        }
     except Exception:
         return None
 
