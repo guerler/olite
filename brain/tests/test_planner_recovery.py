@@ -78,7 +78,7 @@ class FakeSubstrate:
 
 
 def _run(csv_text, scripts):
-    proc = ProcessRegistry().load_packaged().get("visualize_dataset")
+    proc = ProcessRegistry().load_packaged().get("vintent_dataset")
     substrate = FakeSubstrate(csv_text, scripts)
     result = asyncio.run(
         GraphDriver(substrate).run(proc.graph, {"dataset_id": "d1", "request": "scatter BMI vs Glucose"})
@@ -117,7 +117,7 @@ def test_retry_prompt_quotes_the_rejected_value_and_the_reason():
             captured.append(messages[-1].get("content", ""))
             return await super().complete(messages, tools)
 
-    proc = ProcessRegistry().load_packaged().get("visualize_dataset")
+    proc = ProcessRegistry().load_packaged().get("vintent_dataset")
     substrate = FakeSubstrate(_fixture_csv(), BAD_THEN_GOOD)
     substrate.llm = CapturingLlm(BAD_THEN_GOOD)
     asyncio.run(GraphDriver(substrate).run(proc.graph, {"dataset_id": "d1", "request": "x"}))

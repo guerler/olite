@@ -34,4 +34,4 @@ entry points. Import is lazy: nothing loads the engine until a process runs.
 
 The loop reaches a frozen process through the `run_process` tool (loop -> graph
 bridge). Shipped processes live in `../registry/processes/` (`lineage_report`,
-`visualize_dataset`).
+`vintent_dataset`).

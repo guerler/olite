@@ -83,12 +83,12 @@ class FakeSubstrate:
 
 
 def _load_process():
-    return ProcessRegistry().load_packaged().get("visualize_dataset")
+    return ProcessRegistry().load_packaged().get("vintent_dataset")
 
 
 def _run_graph(csv_text, decisions):
     proc = _load_process()
-    assert proc is not None, "visualize_dataset process not registered"
+    assert proc is not None, "vintent_dataset process not registered"
     substrate = FakeSubstrate(csv_text, decisions)
     result = asyncio.run(GraphDriver(substrate).run(proc.graph, {"dataset_id": "d1", "request": "chart it"}))
     last = result.get("last") or {}
@@ -196,7 +196,7 @@ def test_run_process_surfaces_graph_failure_not_null():
             return self
 
     surface = ToolSurface(Sub(), ProcessRegistry().load_packaged())
-    out = asyncio.run(surface.dispatch("run_process", {"name": "visualize_dataset", "inputs": {"dataset_id": "d1"}})).text
+    out = asyncio.run(surface.dispatch("run_process", {"name": "vintent_dataset", "inputs": {"dataset_id": "d1"}})).text
     payload = json.loads(out)
     assert payload["ok"] is False
     assert payload["error"]["code"] == "catalog_unavailable"
@@ -234,7 +234,7 @@ class LoopLlm:
                 "function": {
                     "name": "run_process",
                     "arguments": json.dumps(
-                        {"name": "visualize_dataset", "inputs": {"dataset_id": "d1", "request": "scatter BMI vs Glucose"}}
+                        {"name": "vintent_dataset", "inputs": {"dataset_id": "d1", "request": "scatter BMI vs Glucose"}}
                     ),
                 },
             }

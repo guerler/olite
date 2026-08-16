@@ -144,7 +144,7 @@ def test_the_packaged_processes_declare_least_privilege():
     """Both shipped processes are pure reads; neither should carry write."""
     registry = ProcessRegistry().load_packaged()
 
-    for name in ("visualize_dataset", "lineage_report"):
+    for name in ("vintent_dataset", "lineage_report"):
         declared = registry.get(name).capabilities
         assert declared is not None, f"{name} declares no manifest"
         assert "write" not in declared
