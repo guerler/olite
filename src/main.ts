@@ -197,8 +197,9 @@ async function main() {
             } else if (reply.exhausted) {
                 // Orbit has no step cap; olite's must not look like completion.
                 chat.addInfoMessage("I ran out of steps for one turn while still working. Say \"continue\" to pick it up.");
-            } else if (!spoke) {
+            } else if (!spoke && !reply.done) {
                 // A reply with no tool calls ends the loop, even with no text either.
+                // `done` means the model called finish, whose summary is its reply.
                 chat.addInfoMessage("The model ended the turn without a reply. Ask again, or rephrase.");
             }
             convo.length = 0;
@@ -314,6 +315,15 @@ function buildConfig(incoming: ReturnType<typeof parseIncoming>) {
 function renderMessages(chat: ChatPanel, messages: any[], streamed: Set<string> = new Set()): boolean {
     let spoke = false;
     for (const m of messages) {
+        // `finish` carries the model's closing words in a tool argument rather than in
+        // content, so render its summary as the reply or the turn ends showing nothing.
+        if (m.role === "tool" && m.name === "finish" && m.content) {
+            spoke = true;
+            chat.startAssistantMessage();
+            chat.appendDelta(m.content);
+            chat.finishAssistantMessage();
+            continue;
+        }
         if (m.role === "assistant") {
             if (m.content) {
                 spoke = true;
