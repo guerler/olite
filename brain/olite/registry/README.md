@@ -40,7 +40,7 @@ Shipped:
   are registered by that package's `bridge.py`.
 
 Materializers and schema-builders used by processes register in code
-(`materializers.py` + `extensions/*/bridge.py`, via `register_materializer` /
+(`extensions/*/bridge.py`, via `register_materializer` /
 `register_builder`). Import is lazy: the graph engine and registrations load only
 when `run_process` first runs.
 
@@ -50,14 +50,17 @@ frozen here.
 
 ## extensions
 
-Absorbed code packs. Each is a directory with a `bridge.py` that registers what it
-offers as graph primitives, and `extensions/__init__.py` imports every bridge.
+Primitive packs a graph node can call — olite's own or absorbed. Each is a directory
+with a `bridge.py` that registers what it offers, and `extensions/__init__.py` imports
+every bridge.
 
 ```
 extensions/
   __init__.py     imports each pack's bridge
+  lineage/
+    bridge.py     lineage.mermaid, for lineage_report.yml
   vintent/
-    bridge.py     registers vintent's leaves as materializers + schema-builders
+    bridge.py     vintent's leaves as materializers + schema-builders
     core/ modules/
 ```
 

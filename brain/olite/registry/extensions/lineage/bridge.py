@@ -1,4 +1,4 @@
-"""olite's own materializers: deterministic functions a graph can call."""
+"""Renders a dataset/job lineage as a Mermaid flowchart."""
 
 from olite.drivers.graph import register_materializer
 
