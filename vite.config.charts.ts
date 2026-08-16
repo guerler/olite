@@ -5,12 +5,16 @@ const env = {
     GALAXY_KEY: "",
     GALAXY_ROOT: "http://127.0.0.1:8080",
     LLM_ROOT: "http://127.0.0.1:11434",
-    // Path the /llm proxy rewrites to. Most OpenAI-compatible servers expose
+    // Path the /llm proxy rewrites to; Gemini's shim is /v1beta/openai.
     LLM_PATH: "/v1",
-    // Provider key, injected as a bearer header by the proxy below. Kept in the
+    // Provider key, kept in the environment because the manifest is committed.
     LLM_KEY: "",
-    // Overrides <ai_model> for a dev run, so switching provider needs no edit to a
+    // Overrides <ai_model> for a dev run; empty means use the manifest.
     LLM_MODEL: "",
+    // The context window that decides when the brain compacts; lower it for a small model.
+    LLM_CONTEXT_WINDOW: "",
+    // How much recent conversation compaction keeps; clamped to what the window holds.
+    LLM_KEEP_RECENT_TOKENS: "",
 };
 
 type EnvKeyType = keyof typeof env;
@@ -53,6 +57,8 @@ export const viteConfigCharts = defineConfig({
         "process.env.credentials": JSON.stringify(env.GALAXY_KEY ? "omit" : "include"),
         "process.env.dataset_id": JSON.stringify(env.GALAXY_DATASET_ID),
         "process.env.llm_model": JSON.stringify(env.LLM_MODEL),
+        "process.env.llm_context_window": JSON.stringify(env.LLM_CONTEXT_WINDOW),
+        "process.env.llm_keep_recent_tokens": JSON.stringify(env.LLM_KEEP_RECENT_TOKENS),
     },
     resolve: {
         alias: {
@@ -64,7 +70,7 @@ export const viteConfigCharts = defineConfig({
             "/api": proxyGalaxy(),
             // Galaxy serves its OpenAPI spec here; the scoped catalog fetches it.
             "/openapi.json": proxyGalaxy(),
-            // Direct LLM (dev): olite posts to /llm/chat/completions, proxied to any
+            // Dev LLM proxy; the key is attached here so it never reaches page JS.
             "/llm": {
                 changeOrigin: true,
                 target: env.LLM_ROOT,

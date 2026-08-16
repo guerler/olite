@@ -1,4 +1,4 @@
-// Drives the destructive-op gate and Stop through the real page: real worker, real
+// Drives the real page; only the provider and Galaxy are stubbed (stub.cjs).
 const { chromium } = require("playwright");
 const OUT = process.env.OUT || "/tmp";
 const APP = process.env.APP_URL || "http://localhost:5173/";
@@ -30,6 +30,18 @@ async function script(name) {
 }
 async function seen() {
     return (await (await fetch(`${STUB}/__seen`)).json()).seen;
+}
+
+// Poll the stub for the effect; the thinking indicator says nothing about it.
+async function waitForGalaxy(predicate, ms) {
+    const end = Date.now() + ms;
+    let last = [];
+    while (Date.now() < end) {
+        last = await seen();
+        if (predicate(last)) return last;
+        await new Promise((r) => setTimeout(r, 300));
+    }
+    return last;
 }
 
 async function ask(page, msg) {
@@ -69,7 +81,8 @@ async function ask(page, msg) {
         );
         await p.click("#ext-deny");
         await waitFor(p, () => document.querySelector("#ext-overlay").classList.contains("hidden"), 10000);
-        await waitFor(p, () => !document.querySelector(".thinking-indicator"), 60000);
+        // Give a request that should never happen time to happen anyway.
+        await p.waitForTimeout(4000);
         const puts = (await seen()).filter((s) => s.startsWith("PUT"));
         check("declining sends nothing to Galaxy", puts.length === 0, JSON.stringify(puts));
         check("the decline is visible in chat", /Declined/i.test(await text(p)));
@@ -92,8 +105,8 @@ async function ask(page, msg) {
     if (asked2) {
         await p.click("#ext-accept");
         await waitFor(p, () => document.querySelector("#ext-overlay").classList.contains("hidden"), 10000);
-        await waitFor(p, () => !document.querySelector(".thinking-indicator"), 90000);
-        const puts = (await seen()).filter((s) => s.startsWith("PUT"));
+        const after = await waitForGalaxy((s) => s.some((x) => x.startsWith("PUT")), 60000);
+        const puts = after.filter((s) => s.startsWith("PUT"));
         check("approving lets the request through to Galaxy", puts.length === 1, JSON.stringify(puts));
         await p.screenshot({ path: `${OUT}/c2-approved.png` });
     }
@@ -119,7 +132,43 @@ async function ask(page, msg) {
     );
     await p.screenshot({ path: `${OUT}/c3-stopped.png` });
 
-    console.log("\n" + logs.filter((l) => /error|Error|refus|destructive/.test(l)).slice(-12).join("\n"));
+    // ---- 4. compaction; needs the dev server started with a small window ------
+    if (process.env.LLM_CONTEXT_WINDOW) {
+        await script("compact");
+        await ask(p, "say something");
+        const told = await waitFor(
+            p,
+            () => /Summarized the earlier conversation/i.test(document.body.innerText),
+            90000,
+        );
+        check("compaction is reported rather than silent", told);
+
+        const { prompts } = await (await fetch(`${STUB}/__seen`)).json();
+        const summarization = prompts.filter((x) => !x.hasTools);
+        check("the summarization call carries no tools", summarization.length > 0);
+        if (summarization.length) {
+            check(
+                "it asks for pi's structured checkpoint summary",
+                /context checkpoint summary/.test(summarization[0].text) ||
+                    /conversation to summarize/.test(summarization[0].text),
+                summarization[0].text.slice(0, 80),
+            );
+        }
+        const after = prompts.filter((x) => x.hasTools).pop();
+        check(
+            "the compacted transcript still opens on the system message",
+            after && after.roles[0] === "system",
+            after && after.roles.slice(0, 4).join(","),
+        );
+        check(
+            "no tool result is left without the call it answers",
+            after && after.roles.every((r, i) => r !== "tool" || after.roles[i - 1] === "assistant" || after.roles[i - 1] === "tool"),
+            after && after.roles.join(","),
+        );
+        await p.screenshot({ path: `${OUT}/c4-compacted.png` });
+    }
+
+    console.log("\n" + logs.filter((l) => /error|Error|refus|destructive|compact/.test(l)).slice(-12).join("\n"));
     const failed = results.filter((r) => !r.ok);
     console.log(`\n${results.length - failed.length}/${results.length} checks passed`);
     await b.close();

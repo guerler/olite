@@ -1,4 +1,4 @@
-/** olite shell — a lean vanilla-TS compositor (the olite counterpart of Orbit's app.ts). */
+/** olite shell: mounts Orbit's ChatPanel, boots the Pyodide brain, drives the chat. */
 import "./orbit/styles.css";
 import { ChatPanel } from "./orbit/chat/chat-panel";
 import { applyOrbitTheme } from "./orbit/theme";
@@ -34,7 +34,7 @@ async function main() {
     const incoming = parseIncoming(container);
     applyOrbitTheme("dark", document.documentElement);
 
-    // Build Orbit's chat-pane structure so the vendored styles.css applies as-is.
+    // Orbit's layout chain, so the vendored styles.css applies as-is.
     container.innerHTML = `
       <div id="app-main">
         <div id="chat-pane" class="pane">
@@ -48,9 +48,7 @@ async function main() {
                   <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
               </button>
-              <!-- Orbit's abort button, markup and all: the vendored styles.css
-                   already carries #abort-btn, including the reason it has a visible
-                   label rather than a bare red square. -->
+              <!-- Orbit's abort button; the vendored styles.css already has #abort-btn. -->
               <button id="abort-btn" title="Stop (Esc)" class="hidden" aria-label="Stop the current response">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                   <rect x="6" y="6" width="12" height="12" rx="2" />
@@ -66,9 +64,7 @@ async function main() {
           <div id="artifact-content"></div>
         </div>
       </div>
-      <!-- Orbit's request modal, reduced to the confirm variant (its input and
-           select variants have no caller here). The vendored styles.css already
-           carries .modal-overlay/.modal/.plan-btn. -->
+      <!-- Orbit's request modal, reduced to the confirm variant. -->
       <div id="ext-overlay" class="modal-overlay hidden">
         <div class="modal">
           <div class="modal-header"><h2 id="ext-title">Request</h2></div>
@@ -98,7 +94,7 @@ async function main() {
     const extDeny = container.querySelector<HTMLButtonElement>("#ext-deny")!;
 
     const config = buildConfig(incoming);
-    // Runtime context: reveals whether relative fetches resolve against this page or
+    // Runtime context: where relative fetches resolve and what origin Galaxy calls hit.
     console.log("[olite] context", {
         href: window.location.href,
         origin: window.location.origin,
@@ -128,7 +124,7 @@ async function main() {
         })
         .catch((e) => chat.addErrorMessage(`Failed to load olite: ${e}`));
 
-    // Advances submitted Galaxy work between turns, so the agent can hand control
+    // Advances submitted Galaxy work between turns, so no turn blocks on a job.
     const watcher = new InvocationWatcher({
         readState: galaxyStateReader(config.galaxy_root, (process.env.credentials as RequestCredentials) || "include"),
         onSettled: (w, state) => {
@@ -155,7 +151,6 @@ async function main() {
         chat.addUserMessage(text);
         chat.showThinking();
         convo.push({ role: "user", content: text });
-        const sent = convo.length;
         // Cards rendered live from loop events; the final reconcile skips these ids.
         const streamed = new Set<string>();
         const onEvent = (ev: any) => {
@@ -163,11 +158,20 @@ async function main() {
                 streamed.add(ev.id);
                 chat.hideThinking();
                 chat.addToolCard(ev.id, ev.name || "tool");
+            } else if (ev.type === "compacted") {
+                // Never let history disappear without saying so.
+                chat.addInfoMessage("Summarized the earlier conversation to make room.");
+            } else if (ev.type === "context_overflow") {
+                // Compaction was needed and could not help; say so before the provider does.
+                chat.addErrorMessage(
+                    "This conversation no longer fits in the model's context window, and summarizing " +
+                        "cannot free enough room. Start a new conversation, or configure a larger window.",
+                );
             } else if (ev.type === "tool_end") {
-                // The brain states whether the call failed (pi carries `isError` the
+                // The brain states the outcome; toolStatus only guesses at it.
                 const status = ev.is_error ? "error" : toolStatus(ev.content || "");
                 chat.updateToolCard(ev.id, status, ev.content || "");
-                // Galaxy returns the job/invocation ids in the submission response,
+                // Galaxy returns the ids, so the model never has to register them.
                 watcher.ingest(ev.name || "", ev.content || "");
             }
         };
@@ -179,25 +183,26 @@ async function main() {
             console.log("trace", reply.logs);
             console.log("messages", reply.messages);
             console.groupEnd();
-            // Surface a broken Galaxy catalog once, prominently: an empty galaxy_ops is
+            // Surface a broken Galaxy catalog once; it is otherwise a silent dead end.
             const cat = reply.diagnostics && reply.diagnostics.catalog;
             if (cat && !cat.loaded) {
                 chat.addErrorMessage(`Galaxy catalog did not load (root=${config.galaxy_root}): ${cat.error}`);
             }
             chat.hideThinking();
-            const spoke = renderMessages(chat, (reply.messages || []).slice(sent), streamed);
-            // Exactly one explanation for a turn that produced no reply, most
+            // The brain names this turn's messages; compaction moves them, so no slicing.
+            const spoke = renderMessages(chat, reply.new_messages || [], streamed);
+            // Exactly one explanation for a quiet turn, most specific first.
             if (reply.aborted) {
                 chat.addInfoMessage("Stopped.");
             } else if (reply.exhausted) {
-                // Orbit has no step cap and so no equivalent state; olite's must not
+                // Orbit has no step cap; olite's must not look like completion.
                 chat.addInfoMessage("I ran out of steps for one turn while still working. Say \"continue\" to pick it up.");
             } else if (!spoke) {
-                // The loop ends as soon as a reply carries no tool calls — including
+                // A reply with no tool calls ends the loop, even with no text either.
                 chat.addInfoMessage("The model ended the turn without a reply. Ask again, or rephrase.");
             }
             convo.length = 0;
-            convo.push(...trimConvo(reply.messages || []));
+            convo.push(...(reply.messages || []));
             const artifacts = reply.artifacts || [];
             if (artifacts.length) {
                 document.body.classList.remove("artifact-collapsed");
@@ -221,7 +226,7 @@ async function main() {
         }
     }
 
-    // The brain has parked a turn on a yes/no. Follows Orbit's openExtConfirm: one
+    // The brain has parked a turn on a yes/no; follows Orbit's openExtConfirm.
     function showConfirm(confirmId: string, request: any) {
         extTitle.textContent = request?.title || "Confirm";
         extMessage.textContent = request?.message || "";
@@ -240,7 +245,7 @@ async function main() {
         const onKey = (e: Event) => {
             const key = (e as KeyboardEvent).key;
             if (key === "Escape") {
-                // Capture phase, and stopped here: Escape must answer the modal
+                // Stopped here so Escape answers the modal and not the Stop handler.
                 e.preventDefault();
                 e.stopPropagation();
                 respond(false);
@@ -262,14 +267,14 @@ async function main() {
             void submit();
         }
     });
-    // Esc stops the turn, as in Orbit. Bound on the container rather than the
+    // Esc stops the turn; bound on the container because olite lives in an iframe.
     container.addEventListener("keydown", (e) => {
         if ((e as KeyboardEvent).key === "Escape" && busy) {
             abortCurrentTurn();
         }
     });
 
-    // Approve / Edit / Reject on a ```plan draft card. ChatPanel (vendored from
+    // Approve / Edit / Reject on a plan draft card; wording follows loom's handler.
     messagesEl.addEventListener("plan-draft-action", (e) => {
         const { action, body } = (e as CustomEvent<{ action: string; body: string }>).detail;
         if (action === "approve") {
@@ -286,35 +291,26 @@ async function main() {
     });
 }
 
-// Keep the system prompt plus the most recent turns so the context stays within
-const MAX_MESSAGES = 16;
-
-function trimConvo(messages: any[]): any[] {
-    if (messages.length <= MAX_MESSAGES + 1) {
-        return messages;
-    }
-    let cut = messages.length - MAX_MESSAGES;
-    while (cut < messages.length && messages[cut].role !== "user") {
-        cut++;
-    }
-    return [messages[0], ...messages.slice(cut)];
-}
+// No window here: the brain compacts, and trimming on top would delete the summary.
 
 function buildConfig(incoming: ReturnType<typeof parseIncoming>) {
     const s = incoming.specs;
     return {
         ai_base_url: s.ai_api_base_url || `${incoming.root}api/plugins/${PLUGIN_NAME}`,
         ai_api_key: s.ai_api_key,
-        // LLM_MODEL (dev only) overrides the manifest so switching provider is an
+        // Dev only: switch provider by env instead of editing a committed file.
         ai_model: (process.env.llm_model as string) || s.ai_model,
+        // When the brain compacts; configuration, since there is no model registry.
+        ai_context_window: Number(process.env.llm_context_window) || undefined,
+        ai_keep_recent_tokens: Number(process.env.llm_keep_recent_tokens) || undefined,
         galaxy_root: incoming.root,
         galaxy_key: s.galaxy_api_key,
-        // Demo grants write so the kill-gate can submit jobs; real deployments gate
+        // Demo grants write; real deployments gate it via the install/trust tier.
         capabilities: ["llm", "local", "read", "write"],
     };
 }
 
-/** Render the loop's new messages into ChatPanel: assistant text + tool cards. */
+/** Render the turn's messages; returns whether any assistant prose was shown. */
 function renderMessages(chat: ChatPanel, messages: any[], streamed: Set<string> = new Set()): boolean {
     let spoke = false;
     for (const m of messages) {

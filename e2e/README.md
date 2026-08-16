@@ -16,9 +16,18 @@ printing "the model ended the turn without a reply. Ask again, or rephrase."
 ```bash
 node e2e/stub.cjs &                      # provider + Galaxy, on :8099
 GALAXY_ROOT=http://127.0.0.1:8099 LLM_ROOT=http://127.0.0.1:8099 \
-  LLM_PATH=/v1 LLM_KEY=stub LLM_MODEL=stub-model npm run dev &
-node e2e/confirm-drive.cjs               # exits non-zero if any check fails
+  LLM_PATH=/v1 LLM_KEY=stub LLM_MODEL=stub-model \
+  LLM_CONTEXT_WINDOW=40000 LLM_KEEP_RECENT_TOKENS=500 npm run dev &
+LLM_CONTEXT_WINDOW=40000 node e2e/confirm-drive.cjs   # non-zero if a check fails
 ```
+
+The two `LLM_*` compaction settings shrink the context window so compaction actually
+happens within a few turns instead of after hours of real conversation; the driver
+skips those checks unless `LLM_CONTEXT_WINDOW` is set, so the run still works
+without them. They have to be coherent — a window smaller than olite's ~20k system
+prompt plus the reserve cannot be compacted into, and the brain reports that rather
+than trying. That failure mode is itself worth exercising: it is what a 32k local
+model does.
 
 Screenshots land next to the driver's `OUT` path. Look at them — a check can pass on
 a page that renders nothing.
