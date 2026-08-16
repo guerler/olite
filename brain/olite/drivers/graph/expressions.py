@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Callable
 
-from .exceptions import ExpressionError
+from olite.exceptions import ExpressionError
 from .types import Context
 
 logger = logging.getLogger(__name__)

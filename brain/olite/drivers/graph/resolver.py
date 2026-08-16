@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from .constants import ControlOp
-from .exceptions import ExpressionError
+from olite.exceptions import ExpressionError
 from .expressions import EXPR_OPS, get_available_operators
 from .refs import get_path
 from .types import Context

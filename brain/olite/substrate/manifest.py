@@ -22,7 +22,7 @@ class CapabilityManifest:
         return capability in self.granted
 
     def require(self, capability):
-        from .exceptions import CapabilityError
+        from olite.exceptions import CapabilityError
 
         if not self.allows(capability):
             raise CapabilityError(

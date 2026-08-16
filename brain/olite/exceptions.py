@@ -1,6 +1,41 @@
-"""Polaris-specific exception hierarchy."""
+"""Every olite error, on one base, so `except AppError` catches all of them."""
 
-from olite.substrate.exceptions import AppError
+from typing import Any, Dict, Optional
+
+
+class AppError(Exception):
+    """Base exception for all errors."""
+
+    code: str = "APP_ERROR"
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message)
+        self.message = message
+        self.details = details or {}
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"code": self.code, "message": self.message, "details": self.details}
+
+
+class HttpError(AppError):
+    """HTTP request failed."""
+
+    code = "HTTP_ERROR"
+
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(message, details)
+        self.status_code = status_code
+
+    def to_dict(self) -> Dict[str, Any]:
+        result = super().to_dict()
+        if self.status_code is not None:
+            result["status_code"] = self.status_code
+        return result
 
 
 class ConfigurationError(AppError):
@@ -8,6 +43,23 @@ class ConfigurationError(AppError):
 
     code = "CONFIG_ERROR"
 
+
+class ProviderError(AppError):
+    """Error loading or using API providers."""
+
+    code = "PROVIDER_ERROR"
+
+
+class ApiCallError(AppError):
+    """Error calling an API operation."""
+
+    code = "API_CALL_ERROR"
+
+
+class CapabilityError(AppError):
+    """Operation requires a capability the manifest has not granted."""
+
+    code = "CAPABILITY_DENIED"
 
 class AgentError(AppError):
     """Error related to agent definition or resolution."""
@@ -73,27 +125,3 @@ class NodeExecutionError(AppError):
     """Error executing a graph node."""
 
     code = "NODE_EXECUTION_ERROR"
-
-
-class PlannerError(AppError):
-    """Error in planner node execution."""
-
-    code = "PLANNER_ERROR"
-
-
-class ApiCallError(AppError):
-    """Error calling an API operation."""
-
-    code = "API_CALL_ERROR"
-
-
-class RegistryError(AppError):
-    """Error in registry operations."""
-
-    code = "REGISTRY_ERROR"
-
-
-class ProviderError(AppError):
-    """Error loading or using API providers."""
-
-    code = "PROVIDER_ERROR"

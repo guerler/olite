@@ -6,6 +6,8 @@ import logging
 from olite import compaction
 from olite.substrate import Cancellation
 
+from .brief import brief
+
 from .tools import ToolSurface
 
 logger = logging.getLogger(__name__)
@@ -126,9 +128,9 @@ class LoopDriver:
                     logs.append(f"refuse {name}: {refusal}")
                     content, is_error = refusal, True
                 else:
-                    logs.append(f"call {name}({_brief(args)})")
+                    logs.append(f"call {name}({brief(args)})")
                     outcome = await self.tools.dispatch(name, args)
-                    logs.append(f"  -> {_brief(outcome.content)}")
+                    logs.append(f"  -> {brief(outcome.content)}")
                     content, is_error = outcome.text, outcome.is_error
                 tool_message = {
                     "role": "tool",
@@ -178,6 +180,3 @@ def _emit(on_event, event):
         logger.debug("on_event listener raised", exc_info=True)
 
 
-def _brief(value, limit=200):
-    text = value if isinstance(value, str) else json.dumps(value)
-    return text if len(text) <= limit else text[:limit] + "…"

@@ -109,6 +109,30 @@ export function getPackageNames(repoRoot) {
     return installPackages;
 }
 
+/* Place the pyodide runtime and every wheel where the page will load them. */
+export function copyRuntime(nodePath, tempDir, destDir, fileNames) {
+    fs.mkdirSync(destDir, { recursive: true });
+    for (const fileName of fileNames) {
+        const from = path.join(tempDir, fileName);
+        const to = path.join(destDir, fileName);
+        if (fs.existsSync(from)) {
+            fs.mkdirSync(path.dirname(to), { recursive: true });
+            fs.copyFileSync(from, to);
+        }
+    }
+    // The interpreter itself ships from node_modules, not the CDN.
+    for (const entry of fs.readdirSync(nodePath)) {
+        if (entry.endsWith(".whl") || entry === "package.json" || entry.startsWith("pyodide-lock")) {
+            continue;
+        }
+        const from = path.join(nodePath, entry);
+        if (fs.statSync(from).isFile()) {
+            fs.copyFileSync(from, path.join(destDir, entry));
+        }
+    }
+    fs.copyFileSync(path.join(nodePath, "pyodide-lock.json"), path.join(destDir, "pyodide-lock.json"));
+}
+
 /** Installs pyodide and packages */
 function main() {
     const repoRoot = __dirname;
@@ -120,6 +144,10 @@ function main() {
     const installPackages = getPackageNames(repoRoot);
     const dependencies = getPackageFileNames(nodePath, installPackages);
     downloadFiles(tempDir, dependencies, version);
+    // The browser loads from static/pyodide, so the wheels have to land there; the
+    // temp dir is only a download cache. Without this the runtime silently keeps
+    // whatever was vendored last, and a new requirement never reaches the page.
+    copyRuntime(nodePath, tempDir, destDir, dependencies);
     console.log("Done.");
 }
 

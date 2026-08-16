@@ -3,6 +3,10 @@
 from importlib import resources
 
 import yaml
+from pydantic import ValidationError
+
+from olite.exceptions import ConfigurationError
+from olite.schema import AgentDefinition
 
 
 class Process:
@@ -23,10 +27,13 @@ class ProcessRegistry:
         self._processes[name] = Process(name, graph, description, when_to_use, capabilities)
 
     def register_yaml(self, text):
+        """Parse and validate one agent.yml; a malformed graph fails here, not mid-run."""
         graph = yaml.safe_load(text)
-        name = graph.get("id")
-        if not name:
-            raise ValueError("agent.yml missing an 'id'")
+        try:
+            AgentDefinition.model_validate(graph)
+        except ValidationError as e:
+            raise ConfigurationError(f"Invalid agent.yml: {e}") from e
+        name = graph["id"]
         self.register(
             name,
             graph,

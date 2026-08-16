@@ -6,13 +6,11 @@ import logging
 from olite.substrate import Confirmation
 
 from . import confusables, galaxy_destructive, galaxy_tools, gtn, notebook
+from .brief import brief
 
 logger = logging.getLogger(__name__)
 
 
-def _brief(value, limit=300):
-    text = value if isinstance(value, str) else json.dumps(value, default=str)
-    return text if len(text) <= limit else text[:limit] + "…"
 
 
 RUN_PYTHON = {
@@ -146,7 +144,7 @@ class ToolSurface:
 
     async def dispatch(self, name, args):
         """Run one tool call. Always a ToolOutcome — never a raised exception."""
-        logger.info("tool %s(%s)", name, _brief(args))
+        logger.info("tool %s(%s)", name, brief(args))
         missing = self._missing_required(name, args)
         if missing:
             logger.info("  -> missing required %s", missing)
@@ -156,11 +154,9 @@ class ToolSurface:
             )
         try:
             result = await self._dispatch(name, args)
-            if isinstance(result, ToolOutcome):
-                logger.info("  -> %s", _brief(result.content))
-                return result
-            logger.info("  -> %s", _brief(result))
-            return ToolOutcome(result)
+            outcome = result if isinstance(result, ToolOutcome) else ToolOutcome(result)
+            logger.info("  -> %s", brief(outcome.content))
+            return outcome
         except Exception as e:
             logger.warning("tool %s raised: %s", name, e)
             return ToolOutcome(f"Tool '{name}' raised: {e}", is_error=True)

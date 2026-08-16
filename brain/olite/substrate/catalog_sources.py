@@ -1,4 +1,4 @@
-from .exceptions import ConfigurationError
+from olite.exceptions import ConfigurationError
 from .galaxy import GalaxyApi
 
 

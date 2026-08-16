@@ -7,7 +7,7 @@ import pytest
 
 from olite.drivers.loop.tools import ToolSurface
 from olite.registry import ProcessRegistry
-from olite.substrate.exceptions import CapabilityError
+from olite.exceptions import CapabilityError
 from olite.substrate.manifest import DEFAULT_CAPABILITIES, CapabilityManifest
 from olite.substrate.substrate import Substrate
 

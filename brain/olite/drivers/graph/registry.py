@@ -3,15 +3,11 @@
 import json
 import logging
 
-from olite.substrate.retry import retry_async
-
 from .agents import Agents
-from .exceptions import NodeExecutionError
+from olite.exceptions import NodeExecutionError
 
 logger = logging.getLogger(__name__)
 
-REASON_MAX_RETRIES = 3
-REASON_INITIAL_BACKOFF = 2.0
 
 
 class Registry:
@@ -47,21 +43,14 @@ class Registry:
                 raise NodeExecutionError("Reasoning node produced empty output")
             return content
 
-        def on_retry(e, attempt_no, backoff):
-            logger.warning("reason retry %d/%d in %ss: %s", attempt_no, REASON_MAX_RETRIES, backoff, e)
-
+        # Transport failures are retried once, in the HTTP layer, with the delay the
+        # server stated. Anything that reaches here is not worth trying again.
         try:
-            return await retry_async(
-                attempt,
-                max_retries=REASON_MAX_RETRIES,
-                initial_backoff=REASON_INITIAL_BACKOFF,
-                retryable=lambda e: not isinstance(e, NodeExecutionError),
-                on_retry=on_retry,
-            )
+            return await attempt()
         except NodeExecutionError:
             raise
         except Exception as e:
-            raise NodeExecutionError(f"Reasoning failed after {REASON_MAX_RETRIES} attempts: {e}")
+            raise NodeExecutionError(f"Reasoning failed: {e}")
 
     # --- Reasoning: structured JSON output (raw string for the caller to parse) ---
 

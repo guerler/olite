@@ -1,4 +1,4 @@
-"""Pydantic models for agent definition validation."""
+"""The agent.yml grammar, as pydantic models. Loading validates against this."""
 
 from typing import Annotated, Any, Literal, Union
 
@@ -287,6 +287,10 @@ class AgentDefinition(BaseModel):
     id: str = Field(..., min_length=1)
     kind: Literal["agent_pipeline"] = "agent_pipeline"
     description: str | None = None
+    # Routed on by the loop's run_process tool description.
+    when_to_use: str | None = None
+    # Least privilege: intersected with the session's grant when the process runs.
+    capabilities: list[str] | None = None
     start: str = Field(..., min_length=1)
     inputs: dict[str, InputSpec] = Field(default_factory=dict)
     state: dict[str, StateSpec] = Field(default_factory=dict)
@@ -369,7 +373,3 @@ class AgentDefinition(BaseModel):
 
         return self
 
-
-def validate_agent(data: dict[str, Any]) -> AgentDefinition:
-    """Validate an agent definition dictionary and return a validated model."""
-    return AgentDefinition.model_validate(data)

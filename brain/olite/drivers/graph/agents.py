@@ -1,6 +1,6 @@
 from typing import Any
 
-from .exceptions import AgentError
+from olite.exceptions import AgentError
 
 AgentDefinition = dict[str, Any]
 

@@ -3,6 +3,9 @@ import "./orbit/styles.css";
 import { ChatPanel } from "./orbit/chat/chat-panel";
 import { applyOrbitTheme } from "./orbit/theme";
 import { parseIncoming } from "./incoming";
+import { buildConfig } from "./config";
+import { describeError, lastLine, renderMessages, toolStatus } from "./transcript";
+import { createConfirm } from "./confirm-modal";
 import { PyodideManager } from "./pyodide/pyodide-manager";
 import { runOlite } from "./pyodide-runner";
 import { renderArtifact } from "./artifacts";
@@ -87,11 +90,6 @@ async function main() {
     const sendBtn = container.querySelector<HTMLButtonElement>("#send-btn")!;
     const abortBtn = container.querySelector<HTMLButtonElement>("#abort-btn")!;
     const artifactContent = container.querySelector<HTMLElement>("#artifact-content")!;
-    const extOverlay = container.querySelector<HTMLElement>("#ext-overlay")!;
-    const extTitle = container.querySelector<HTMLElement>("#ext-title")!;
-    const extMessage = container.querySelector<HTMLElement>("#ext-message")!;
-    const extAccept = container.querySelector<HTMLButtonElement>("#ext-accept")!;
-    const extDeny = container.querySelector<HTMLButtonElement>("#ext-deny")!;
 
     const config = buildConfig(incoming);
     // Runtime context: where relative fetches resolve and what origin Galaxy calls hit.
@@ -270,38 +268,11 @@ async function main() {
         }
     }
 
-    // The brain has parked a turn on a yes/no; follows Orbit's openExtConfirm.
-    function showConfirm(confirmId: string, request: any) {
-        extTitle.textContent = request?.title || "Confirm";
-        extMessage.textContent = request?.message || "";
-        extOverlay.classList.remove("hidden");
-
-        const respond = (approved: boolean) => {
-            extOverlay.classList.add("hidden");
-            extAccept.removeEventListener("click", onYes);
-            extDeny.removeEventListener("click", onNo);
-            container.removeEventListener("keydown", onKey, true);
-            pyodide.respondToConfirm(confirmId, approved);
-            chat.addInfoMessage(approved ? `Approved: ${request?.message || ""}` : "Declined.");
-        };
-        const onYes = () => respond(true);
-        const onNo = () => respond(false);
-        const onKey = (e: Event) => {
-            const key = (e as KeyboardEvent).key;
-            if (key === "Escape") {
-                // Stopped here so Escape answers the modal and not the Stop handler.
-                e.preventDefault();
-                e.stopPropagation();
-                respond(false);
-            }
-        };
-        extAccept.addEventListener("click", onYes);
-        extDeny.addEventListener("click", onNo);
-        container.addEventListener("keydown", onKey, true);
-        extAccept.focus();
-    }
-
-    pyodide.onConfirm = showConfirm;
+    pyodide.onConfirm = createConfirm({
+        container,
+        respond: (id, approved) => pyodide.respondToConfirm(id, approved),
+        note: (text) => chat.addInfoMessage(text),
+    });
 
     sendBtn.addEventListener("click", submit);
     abortBtn.addEventListener("click", abortCurrentTurn);
@@ -336,89 +307,5 @@ async function main() {
 }
 
 // No window here: the brain compacts, and trimming on top would delete the summary.
-
-function buildConfig(incoming: ReturnType<typeof parseIncoming>) {
-    const s = incoming.specs;
-    return {
-        ai_base_url: s.ai_api_base_url || `${incoming.root}api/plugins/${PLUGIN_NAME}`,
-        ai_api_key: s.ai_api_key,
-        // Dev only: switch provider by env instead of editing a committed file.
-        // Names a built-in provider, so the brain gets its limits and context window.
-        // Falling back to Galaxy's proxy IS a provider, and a capped one, so say so.
-        ai_provider: (process.env.llm_provider as string) || (s.ai_api_base_url ? undefined : "galaxy"),
-        ai_model: (process.env.llm_model as string) || s.ai_model,
-        // When the brain compacts; configuration, since there is no model registry.
-        ai_context_window: Number(process.env.llm_context_window) || undefined,
-        ai_keep_recent_tokens: Number(process.env.llm_keep_recent_tokens) || undefined,
-        galaxy_root: incoming.root,
-        galaxy_key: s.galaxy_api_key,
-        // Demo grants write; real deployments gate it via the install/trust tier.
-        capabilities: ["llm", "local", "read", "write"],
-    };
-}
-
-/** Render the turn's messages; returns whether any assistant prose was shown. */
-function renderMessages(chat: ChatPanel, messages: any[], streamed: Set<string> = new Set()): boolean {
-    let spoke = false;
-    for (const m of messages) {
-        // `finish` carries the model's closing words in a tool argument rather than in
-        // content, so render its summary as the reply or the turn ends showing nothing.
-        if (m.role === "tool" && m.name === "finish" && m.content) {
-            spoke = true;
-            chat.startAssistantMessage();
-            chat.appendDelta(m.content);
-            chat.finishAssistantMessage();
-            continue;
-        }
-        if (m.role === "assistant") {
-            if (m.content) {
-                spoke = true;
-                chat.startAssistantMessage();
-                chat.appendDelta(m.content);
-                chat.finishAssistantMessage();
-            }
-            for (const tc of m.tool_calls || []) {
-                if (!streamed.has(tc.id)) {
-                    chat.addToolCard(tc.id, tc.function?.name || "tool");
-                }
-            }
-        } else if (m.role === "tool") {
-            if (!streamed.has(m.tool_call_id)) {
-                chat.updateToolCard(m.tool_call_id, toolStatus(m.content), m.content);
-            }
-        }
-    }
-    return spoke;
-}
-
-/** The last meaningful line of a Python traceback, which is the actual error. */
-function lastLine(text: string): string {
-    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-    return lines[lines.length - 1] || text;
-}
-
-/** A provider failure in words, not a status code and a wall of JSON. */
-function describeError(err: { message?: string; status_code?: number }): string {
-    const status = err.status_code;
-    if (status === 429) {
-        return "The model provider is out of quota for now. Wait, or switch provider (see the README).";
-    }
-    if (status === 401 || status === 403) {
-        return "The model provider rejected the credentials. Check LLM_KEY.";
-    }
-    return lastLine(err.message || "The turn failed.");
-}
-
-function toolStatus(content: string): "done" | "error" {
-    try {
-        const parsed = JSON.parse(content);
-        if (parsed && parsed.ok === false) {
-            return "error";
-        }
-    } catch {
-        // non-JSON tool output (e.g. run_python) is a success
-    }
-    return "done";
-}
 
 void main();

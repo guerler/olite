@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from .exceptions import HttpError
+from olite.exceptions import HttpError
 
 logger = logging.getLogger(__name__)
 
