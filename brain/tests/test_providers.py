@@ -53,9 +53,16 @@ def test_a_model_supplies_its_own_window_so_nothing_has_to_be_configured():
     assert resolve({"ai_provider": "gemini", "ai_model": "gemini-3.7-flash"}).context_window == 1_000_000
 
 
-def test_a_provider_supplies_a_window_when_the_model_is_unknown():
-    """llama.cpp ignores the model name, so the window belongs to the server."""
-    assert resolve({"ai_provider": "local", "ai_model": "whatever.gguf"}).context_window == 32000
+def test_a_server_whose_window_is_its_own_asks_rather_than_assumes():
+    """llama.cpp ignores the model name, so the window belongs to the running server."""
+    target = resolve({"ai_provider": "local", "ai_model": "whatever.gguf"})
+    assert target.provider.probe_window is True
+    assert target.context_window == DEFAULT_CONTEXT_WINDOW
+
+
+def test_only_a_provider_that_opts_in_is_probed():
+    assert REGISTRY["gemini"].probe_window is False
+    assert REGISTRY["galaxy"].probe_window is False
 
 
 def test_config_still_wins_over_everything():
@@ -157,3 +164,50 @@ def test_galaxys_limits_are_recorded():
     limits = REGISTRY["galaxy"].limits
     assert (limits.max_tokens, limits.max_tool_bytes, limits.max_tools) == (8192, 16384, 128)
     assert isinstance(limits, Limits)
+
+
+# --- asking the endpoint for its window -------------------------------------------
+
+
+def test_the_probe_reads_llama_cpps_reported_window():
+    import asyncio
+
+    from olite.substrate.llm import client
+
+    async def fake(method, url, **kw):
+        assert url.endswith("/props")
+        return {"default_generation_settings": {"n_ctx": 65536}}
+
+    original = client.http.request
+    client.http.request = fake
+    try:
+        assert asyncio.run(client._probe_window("http://127.0.0.1:11434/v1")) == 65536
+    finally:
+        client.http.request = original
+
+
+def test_a_server_without_props_leaves_the_default_alone():
+    import asyncio
+
+    from olite.substrate.llm import client
+
+    async def missing(method, url, **kw):
+        raise RuntimeError("404")
+
+    original = client.http.request
+    client.http.request = missing
+    try:
+        assert asyncio.run(client._probe_window("http://127.0.0.1:11434/v1")) is None
+    finally:
+        client.http.request = original
+
+
+def test_a_configured_window_is_not_overridden_by_a_probe():
+    import asyncio
+
+    from olite.substrate.llm import Llm
+    from olite.substrate.manifest import CapabilityManifest
+
+    llm = Llm({"ai_provider": "local", "ai_context_window": 8000}, CapabilityManifest())
+    asyncio.run(llm.init())
+    assert llm.target.context_window == 8000

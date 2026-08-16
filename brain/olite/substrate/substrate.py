@@ -20,6 +20,7 @@ class Substrate:
 
     async def init(self):
         await self.catalog.init()
+        await self.llm.init()
         return self
 
     def scoped(self, capabilities):

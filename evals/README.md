@@ -10,12 +10,14 @@ python evals/run.py                    # every scenario x every available model
 python evals/run.py plan-creation      # filter scenarios by substring
 python evals/run.py --model gemini     # filter models by substring
 python evals/run.py --json out.json    # also write raw transcripts and failures
-python evals/run.py --delay 0          # no pacing (paid key / local model)
+python evals/run.py --delay 5          # extra pacing on top of the provider's own
 ```
 
-**Pacing.** Runs are spaced by `--delay` seconds (default 12). Free tiers meter per
-minute, and a matrix fires back-to-back runs with ~20k-token prompts, so an unpaced
-matrix loses most of itself to HTTP 429. A quota-limited run is reported as `quota`,
+**Pacing.** Each model resolves through the brain's provider registry, so the run is
+throttled at the endpoint's own rate — Gemini's free tier is 5 requests/minute, and
+that number lives in `providers.py`. `--delay` adds more on top and defaults to none.
+A per-day quota is a different thing and no amount of pacing fixes it. A quota-limited
+run is reported as `quota`,
 counted in its own column, **not graded, and does not fail the suite** — an exhausted
 account is a fact about the key, not about the agent, and must never be readable as
 a behavioural failure.

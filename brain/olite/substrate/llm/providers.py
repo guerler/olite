@@ -39,6 +39,8 @@ class Provider:
     context_window: int | None = None
     rate_limit: int | None = None
     compat: dict = field(default_factory=dict)
+    # llama.cpp reports its own n_ctx; ask rather than assume.
+    probe_window: bool = False
 
     def __post_init__(self):
         if self.name is None:
@@ -82,7 +84,7 @@ LOCAL = Provider(
     id="local",
     name="Local OpenAI-compatible server",
     base_url="http://127.0.0.1:11434/v1",
-    context_window=32000,
+    probe_window=True,
 )
 
 REGISTRY = {p.id: p for p in (GALAXY, GEMINI, DEEPSEEK, LOCAL)}

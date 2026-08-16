@@ -9,6 +9,7 @@ from olite.drivers import LoopDriver
 from olite.registry import ProcessRegistry, SkillRegistry
 from olite.runtime import _inject_context
 from olite.substrate import Substrate
+from olite.substrate.llm import REGISTRY
 
 
 class StubGalaxy:
@@ -60,17 +61,34 @@ class RunResult:
 
 
 def build_config(model):
-    cfg = model.get("providerConfig") or {}
-    base = os.environ.get(cfg.get("baseUrlEnvVar", ""), "") or cfg.get("baseUrl", "")
-    key = os.environ.get(cfg.get("apiKeyEnvVar", ""), "")
-    return {
+    """Resolve through the brain's provider registry, so evals and the app agree."""
+    base = model.get("baseUrl") or ""
+    if base.startswith("${") and base.endswith("}"):
+        base = os.environ.get(base[2:-1], "")
+    config = {
         "galaxy_root": "http://stub.invalid/",
-        "ai_base_url": base.rstrip("/"),
-        "ai_api_key": key,
+        "ai_provider": model.get("provider"),
         "ai_model": model["model"],
         # Write is granted, or "did not execute" would assert about an unadvertised tool.
         "capabilities": ["llm", "local", "read", "write"],
     }
+    if base:
+        config["ai_base_url"] = base.rstrip("/")
+    key = _api_key(model)
+    if key:
+        config["ai_api_key"] = key
+    return config
+
+
+def _api_key(model):
+    """The registry names the env var; envRequires is the fallback for custom entries."""
+    provider = REGISTRY.get(model.get("provider"))
+    if provider and provider.auth_env:
+        return os.environ.get(provider.auth_env, "")
+    for name in model.get("envRequires", []):
+        if name.endswith("_KEY"):
+            return os.environ.get(name, "")
+    return ""
 
 
 async def _run(scenario, model):

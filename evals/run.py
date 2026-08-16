@@ -45,8 +45,8 @@ def main():
     ap.add_argument("scenario", nargs="?", help="substring filter on scenario directory")
     ap.add_argument("--model", help="substring filter on model id")
     ap.add_argument("--json", dest="json_out", help="write raw results here")
-    ap.add_argument("--delay", type=float, default=12.0,
-                    help="seconds between runs; free tiers meter per minute (0 to disable)")
+    ap.add_argument("--delay", type=float, default=0.0,
+                    help="extra seconds between runs; the provider's own rate limit already applies")
     args = ap.parse_args()
 
     with open(os.path.join(HERE, "models.json")) as f:
@@ -125,7 +125,7 @@ def print_leaderboard(results, models):
         print(f"{model['id']:24s} " + " ".join(cells) + f" {errors:>7d} {quota:>6d}")
     print("\nA dash means no scenario exercised that dimension for this model.")
     if any(is_quota(r) for r in results):
-        print("Quota-limited runs were not graded. Raise --delay or use a paid key for a full matrix.")
+        print("Quota-limited runs were not graded. A daily quota needs a paid key, not a longer delay.")
 
 
 if __name__ == "__main__":
