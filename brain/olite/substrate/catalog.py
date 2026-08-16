@@ -3,7 +3,7 @@
 import copy
 import logging
 
-from .providers import load_providers
+from .catalog_sources import load_providers
 
 logger = logging.getLogger(__name__)
 

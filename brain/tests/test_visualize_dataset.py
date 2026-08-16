@@ -1,6 +1,7 @@
 """End-to-end tests for the absorbed vintent pipeline as an olite graph process."""
 
 import asyncio
+from olite.substrate.llm import Reply
 import csv
 import io
 import json
@@ -60,7 +61,7 @@ class FakeLlm:
             d = self.decisions.get("extract", {"id": "none"})
         else:
             d = self.decisions["fill"]
-        return {"choices": [{"message": {"content": json.dumps(d)}}]}
+        return Reply(content=json.dumps(d))
 
 
 class FakeManifest:
@@ -235,8 +236,8 @@ class LoopLlm:
                     ),
                 },
             }
-            return {"choices": [{"message": {"content": "", "tool_calls": [call]}}]}
-        return {"choices": [{"message": {"content": "Here is your chart.", "tool_calls": []}}]}
+            return Reply(tool_calls=[call])
+        return Reply(content="Here is your chart.")
 
 
 def test_full_loop_routes_artifact_and_injects_skill():

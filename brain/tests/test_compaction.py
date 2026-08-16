@@ -5,6 +5,7 @@ import asyncio
 from olite import compaction
 from olite.drivers.loop.agent import LoopDriver
 from olite.substrate import CapabilityManifest
+from olite.substrate.llm import Reply
 
 
 def _settings(**overrides):
@@ -38,7 +39,7 @@ class Summarizer:
 
     async def complete(self, messages, tools=None, **kwargs):
         self.prompts.append(messages)
-        return {"choices": [{"message": {"content": self.summary}}]}
+        return Reply(content=self.summary)
 
 
 def _long(role_builder, n):
@@ -259,8 +260,8 @@ class ScriptedLlm:
     async def complete(self, messages, tools=None, **kwargs):
         self.calls.append({"tools": bool(tools), "messages": messages})
         if tools is None:
-            return {"choices": [{"message": {"content": "## Goal\nsummary"}}]}
-        return {"choices": [{"finish_reason": "stop", "message": {"content": "done", "tool_calls": []}}]}
+            return Reply(content="## Goal\nsummary")
+        return Reply(content="done", finish_reason="stop")
 
 
 class FakeSubstrate:

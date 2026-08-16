@@ -42,7 +42,7 @@ class Registry:
 
         async def attempt():
             reply = await self.substrate.llm.complete(messages)
-            content = reply.get("choices", [{}])[0].get("message", {}).get("content")
+            content = reply.content
             if not content or not content.strip():
                 raise NodeExecutionError("Reasoning node produced empty output")
             return content
@@ -79,7 +79,7 @@ class Registry:
             {"role": "user", "content": f"{prompt}\n\nRequired JSON Schema:\n{schema_str}"},
         ]
         reply = await self.substrate.llm.complete(messages)
-        content = reply.get("choices", [{}])[0].get("message", {}).get("content")
+        content = reply.content
         if not content or not content.strip():
             raise NodeExecutionError("LLM returned empty content")
         return _unfence(content)

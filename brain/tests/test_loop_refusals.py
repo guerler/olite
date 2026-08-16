@@ -5,6 +5,7 @@ import json
 
 from olite.drivers.loop.agent import LoopDriver
 from olite.substrate import CapabilityManifest
+from olite.substrate.llm import Reply
 
 
 class ScriptedLlm:
@@ -16,7 +17,7 @@ class ScriptedLlm:
 
     async def complete(self, messages, tools=None, **kwargs):
         self.calls.append(messages)
-        return {"choices": [self.choices.pop(0)]}
+        return self.choices.pop(0)
 
 
 class Local:
@@ -41,7 +42,7 @@ def _call(name, arguments, call_id="c1"):
 
 
 def _choice(tool_calls, finish_reason="tool_calls", content=""):
-    return {"finish_reason": finish_reason, "message": {"content": content, "tool_calls": tool_calls}}
+    return Reply(content=content, tool_calls=tool_calls, finish_reason=finish_reason)
 
 
 def _tool_messages(result):

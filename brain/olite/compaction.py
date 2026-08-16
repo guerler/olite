@@ -95,11 +95,24 @@ Keep each section concise. Preserve exact file paths, function names, and error 
 
 
 class Settings:
-    def __init__(self, config=None):
+    def __init__(self, config=None, target=None):
+        """`target` is the resolved endpoint; it supplies the window and the reserve.
+
+        The reserve is headroom for the reply, so it is exactly the `max_tokens` the
+        request will carry — which the endpoint may cap below what we asked for.
+        """
         config = config or {}
         self.enabled = config.get("ai_compaction", True)
-        self.context_window = config.get("ai_context_window") or DEFAULT_CONTEXT_WINDOW
-        self.reserve_tokens = config.get("ai_reserve_tokens") or RESERVE_TOKENS
+        self.context_window = (
+            config.get("ai_context_window")
+            or (target.context_window if target else None)
+            or DEFAULT_CONTEXT_WINDOW
+        )
+        self.reserve_tokens = (
+            config.get("ai_reserve_tokens")
+            or (target.max_tokens if target else None)
+            or RESERVE_TOKENS
+        )
         keep = config.get("ai_keep_recent_tokens") or KEEP_RECENT_TOKENS
         # Keeping more than the window holds would decline compaction forever.
         self.budget = max(0, self.context_window - self.reserve_tokens)
@@ -271,7 +284,7 @@ async def compact(messages, llm, settings, cancellation=None, measured=None):
     ]
     # No tools: this call summarizes, it does not act.
     reply = await llm.complete(request, cancellation=cancellation)
-    summary = (reply.get("choices", [{}])[0].get("message", {}) or {}).get("content") or ""
+    summary = reply.content or ""
     if not summary.strip():
         # An empty summary would delete the history and replace it with nothing.
         logger.warning("summarization returned nothing; leaving the conversation intact")

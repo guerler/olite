@@ -343,6 +343,9 @@ function buildConfig(incoming: ReturnType<typeof parseIncoming>) {
         ai_base_url: s.ai_api_base_url || `${incoming.root}api/plugins/${PLUGIN_NAME}`,
         ai_api_key: s.ai_api_key,
         // Dev only: switch provider by env instead of editing a committed file.
+        // Names a built-in provider, so the brain gets its limits and context window.
+        // Falling back to Galaxy's proxy IS a provider, and a capped one, so say so.
+        ai_provider: (process.env.llm_provider as string) || (s.ai_api_base_url ? undefined : "galaxy"),
         ai_model: (process.env.llm_model as string) || s.ai_model,
         // When the brain compacts; configuration, since there is no model registry.
         ai_context_window: Number(process.env.llm_context_window) || undefined,

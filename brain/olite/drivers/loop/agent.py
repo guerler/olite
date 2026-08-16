@@ -29,7 +29,9 @@ class LoopDriver:
     def __init__(self, substrate, processes=None, skills=None, confirmation=None):
         self.substrate = substrate
         self.tools = ToolSurface(substrate, processes, skills, confirmation)
-        self.compaction = compaction.Settings(getattr(substrate, "config", None))
+        self.compaction = compaction.Settings(
+            getattr(substrate, "config", None), getattr(substrate.llm, "target", None)
+        )
 
     async def run(self, transcripts, on_event=None, cancellation=None):
         messages = [dict(m) for m in transcripts]
@@ -78,26 +80,24 @@ class LoopDriver:
                 aborted, exhausted = True, False
                 break
 
-            choice = reply.get("choices", [{}])[0]
-            message = choice.get("message", {})
-            truncated = choice.get("finish_reason") == TRUNCATED
-            tool_calls = message.get("tool_calls") or []
+            truncated = reply.finish_reason == TRUNCATED
+            tool_calls = reply.tool_calls
 
             assistant = {
                 "role": "assistant",
-                "content": message.get("content") or "",
+                "content": reply.content,
                 "tool_calls": tool_calls,
             }
             messages.append(assistant)
             produced.append(assistant)
             # Kept beside the message, which goes back to the provider verbatim.
-            counted = compaction.usage_tokens(reply.get("usage"))
+            counted = compaction.usage_tokens(reply.usage)
             if counted:
                 measured = {"tokens": counted, "index": len(messages) - 1}
 
             if not tool_calls:
-                if message.get("content"):
-                    logs.append(f"assistant: {message['content']}")
+                if reply.content:
+                    logs.append(f"assistant: {reply.content}")
                 exhausted = False
                 break
 

@@ -1,6 +1,7 @@
 """Planner behaviour when the model's reply does not match the built schema."""
 
 import asyncio
+from olite.substrate.llm import Reply
 import csv
 import io
 import json
@@ -59,7 +60,7 @@ class ScriptedLlm:
         self.asked.append(key)
         queue = self.scripts[key]
         reply = queue.pop(0) if len(queue) > 1 else queue[0]
-        return {"choices": [{"message": {"content": json.dumps(reply)}}]}
+        return Reply(content=json.dumps(reply))
 
 
 class FakeManifest:

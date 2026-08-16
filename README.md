@@ -61,10 +61,14 @@ python3 evals/run.py smoke --delay 0
 
 ```bash
 GALAXY_ROOT=http://127.0.0.1:8080 GALAXY_KEY=<galaxy-api-key> \
-LLM_ROOT=https://generativelanguage.googleapis.com LLM_PATH=/v1beta/openai \
-LLM_KEY="$GEMINI_KEY" LLM_MODEL=gemini-3.7-flash \
+LLM_PROVIDER=gemini LLM_KEY="$GEMINI_KEY" LLM_MODEL=gemini-3.7-flash \
 npm run dev
 ```
+
+`LLM_PROVIDER` names a built-in provider (`galaxy`, `gemini`, `deepseek`, `local`),
+which carries its own base URL, context window, rate limit and endpoint caps — see
+`brain/olite/substrate/llm/providers.py`. For an endpoint the registry does not know,
+set `LLM_ROOT` and `LLM_PATH` instead and it is treated as a custom provider.
 
 Then open http://localhost:5173, or `?dataset_id=<id>` to start with a dataset in scope.
 
@@ -85,8 +89,8 @@ a production install needs the registration.
   then reload. Vite only watches `src/`.
 - Provider keys usually live in `~/.zshrc`, which a non-interactive shell does not read;
   `source ~/.zshrc` first.
-- Point `LLM_CONTEXT_WINDOW` at your model's real window. It defaults to 128k, and olite
-  has no way to discover it.
+- `LLM_PROVIDER` supplies the context window; only set `LLM_CONTEXT_WINDOW` for an
+  endpoint the registry does not know, or to force a smaller one.
 
 ## Tests
 

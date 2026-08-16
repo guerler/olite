@@ -4,9 +4,12 @@ const env = {
     GALAXY_DATASET_ID: "",
     GALAXY_KEY: "",
     GALAXY_ROOT: "http://127.0.0.1:8080",
-    LLM_ROOT: "http://127.0.0.1:11434",
+    // Names a built-in provider (galaxy | gemini | deepseek | local). Setting it is
+    // enough; LLM_ROOT/LLM_PATH below are only for an endpoint the registry lacks.
+    LLM_PROVIDER: "",
+    LLM_ROOT: "",
     // Path the /llm proxy rewrites to; Gemini's shim is /v1beta/openai.
-    LLM_PATH: "/v1",
+    LLM_PATH: "",
     // Provider key, kept in the environment because the manifest is committed.
     LLM_KEY: "",
     // Overrides <ai_model> for a dev run; empty means use the manifest.
@@ -39,6 +42,16 @@ const proxyGalaxy = () => ({
     target: env.GALAXY_ROOT,
 });
 
+// The /llm proxy needs a concrete origin even when a provider supplies it.
+const LLM_TARGETS: Record<string, { root: string; path: string }> = {
+    gemini: { root: "https://generativelanguage.googleapis.com", path: "/v1beta/openai" },
+    deepseek: { root: "https://api.deepseek.com", path: "/v1" },
+    local: { root: "http://127.0.0.1:11434", path: "/v1" },
+};
+const llmTarget = LLM_TARGETS[env.LLM_PROVIDER] || { root: "http://127.0.0.1:11434", path: "/v1" };
+const llmRoot = env.LLM_ROOT || llmTarget.root;
+const llmPath = env.LLM_PATH || llmTarget.path;
+
 // https://vitejs.dev/config/
 export const viteConfigCharts = defineConfig({
     build: {
@@ -56,6 +69,7 @@ export const viteConfigCharts = defineConfig({
     define: {
         "process.env.credentials": JSON.stringify(env.GALAXY_KEY ? "omit" : "include"),
         "process.env.dataset_id": JSON.stringify(env.GALAXY_DATASET_ID),
+        "process.env.llm_provider": JSON.stringify(env.LLM_PROVIDER),
         "process.env.llm_model": JSON.stringify(env.LLM_MODEL),
         "process.env.llm_context_window": JSON.stringify(env.LLM_CONTEXT_WINDOW),
         "process.env.llm_keep_recent_tokens": JSON.stringify(env.LLM_KEEP_RECENT_TOKENS),
@@ -73,8 +87,8 @@ export const viteConfigCharts = defineConfig({
             // Dev LLM proxy; the key is attached here so it never reaches page JS.
             "/llm": {
                 changeOrigin: true,
-                target: env.LLM_ROOT,
-                rewrite: (path: string) => path.replace(/^\/llm/, env.LLM_PATH),
+                target: llmRoot,
+                rewrite: (path: string) => path.replace(/^\/llm/, llmPath),
                 headers: env.LLM_KEY ? { Authorization: `Bearer ${env.LLM_KEY}` } : undefined,
             },
         },
