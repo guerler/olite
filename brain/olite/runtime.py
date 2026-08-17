@@ -5,6 +5,7 @@ import logging
 from olite import config as config_module
 from olite import prompt
 from olite.drivers import LoopDriver
+from olite.drivers.loop import notebook
 from olite.registry import ProcessRegistry, SkillRegistry
 from olite.substrate import Substrate, cancellation, confirm
 
@@ -21,6 +22,10 @@ async def run(config, inputs, on_event=None):
     # The shell seeds the identity prompt; the brain appends discipline and the router.
     context = "\n\n".join(t for t in (prompt.system_text(), skills.router_text()) if t)
     transcripts = _inject_context(inputs["transcripts"], context)
+    # loom keeps the record out of the cached prefix; it changes every time the agent writes.
+    transcripts = _inject_record(
+        transcripts, await notebook.excerpt(substrate.galaxy, config.get("history_id"))
+    )
     try:
         result = await driver.run(transcripts, on_event, cancellation.from_js())
     except Exception as e:
@@ -42,6 +47,15 @@ async def run(config, inputs, on_event=None):
 
 BEGIN = "<!-- olite:context -->"
 END = "<!-- /olite:context -->"
+RECORD_MARKER = "<!-- olite:record -->"
+
+
+def _inject_record(transcripts, text):
+    """Refresh the record excerpt as its own message, dropping the previous copy."""
+    kept = [m for m in transcripts if RECORD_MARKER not in (m.get("content") or "")]
+    if not text:
+        return kept
+    return [*kept, {"role": "system", "content": f"{RECORD_MARKER}\n{text}"}]
 
 
 def _inject_context(transcripts, text):

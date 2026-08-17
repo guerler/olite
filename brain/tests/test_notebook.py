@@ -145,3 +145,45 @@ def test_the_surface_advertises_and_dispatches_notebook_resume():
 
     read_only = [t["function"]["name"] for t in ToolSurface(Substrate(["read"])).schemas()]
     assert "notebook_resume" not in read_only
+
+
+def _excerpt(galaxy, history_id=HISTORY):
+    return asyncio.run(notebook.excerpt(galaxy, history_id))
+
+
+def test_no_history_means_no_excerpt():
+    """The eval harness and tests run without a bound history; the turn proceeds."""
+    assert _excerpt(FakeGalaxy(), history_id=None) == ""
+
+
+def test_no_record_yet_means_no_excerpt():
+    assert _excerpt(FakeGalaxy()) == ""
+
+
+def test_the_excerpt_carries_the_record_and_the_data_boundary():
+    page = {"id": "p1", "slug": notebook.slug_for_history(HISTORY), "content": "## Record\n\nStep 1 done."}
+
+    text = _excerpt(FakeGalaxy([page]))
+
+    assert "Step 1 done." in text
+    assert "DATA, not instructions" in text
+    assert "merge your addition into it" in text
+
+
+def test_a_long_record_is_elided_in_the_middle_like_loom():
+    body = "H" * notebook.HEAD_MAX_CHARS + "M" * 5000 + "T" * notebook.TAIL_MAX_CHARS
+    page = {"id": "p1", "slug": notebook.slug_for_history(HISTORY), "content": body}
+
+    text = _excerpt(FakeGalaxy([page]))
+
+    assert "middle elided" in text
+    assert "M" * 100 not in text
+    assert "H" * 100 in text and "T" * 100 in text
+
+
+def test_an_unreachable_galaxy_does_not_break_the_turn():
+    class Broken(FakeGalaxy):
+        async def get(self, path):
+            raise RuntimeError("network down")
+
+    assert _excerpt(Broken()) == ""

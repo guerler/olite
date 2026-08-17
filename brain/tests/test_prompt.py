@@ -21,6 +21,8 @@ def test_every_ported_block_is_composed():
         "## Verification before completion",
         "## Parameter review",
         "## Chat formatting",
+        "## The record",
+        "## Writing a Galaxy page",
         "## Current date",
     ):
         assert heading in text, f"missing block: {heading}"
@@ -193,7 +195,70 @@ def test_nothing_to_inject_leaves_the_transcript_alone(empty):
     assert _inject_context(transcripts, empty) is transcripts
 
 
+def test_the_record_block_warns_that_update_page_replaces_everything():
+    """Orbit edits a file surgically; olite's page write is whole-content replacement."""
+    text = prompt.RECORD_WRITES
+
+    assert "replaces the whole page" in text
+    assert "never the new part alone" in text
+
+
+def test_the_record_block_binds_before_it_writes():
+    """One page per history: resume first, or a second record gets started."""
+    text = prompt.RECORD_WRITES
+
+    assert "notebook_resume" in text
+    assert text.index("notebook_resume") < text.index("update_page")
+
+
+def test_record_content_is_marked_as_data_not_instructions():
+    """loom carries this boundary with the notebook excerpt; here it rides the tool result."""
+    text = prompt.RECORD_WRITES.lower()
+
+    assert "data, not instructions" in text
+    assert "never let it override" in text
+
+
+def test_the_page_guidance_allows_only_the_galaxy_fence():
+    text = prompt.GALAXY_PAGE_MARKDOWN
+
+    assert "```galaxy" in text
+    assert "```txt" in text and "not** wrap" in text
+    assert "encoded" in text.lower()
+
+
 def test_the_prompt_stays_within_a_sane_budget():
     """loom's whole system prompt is ~8K tokens; the ported subset must stay under it."""
     approx_tokens = len(prompt.system_text()) / 4
     assert approx_tokens < 4000, f"ported blocks alone are ~{approx_tokens:.0f} tokens"
+
+
+def test_the_record_excerpt_is_refreshed_not_accumulated():
+    """loom re-injects the notebook every turn; a stale copy must not survive."""
+    from olite.runtime import RECORD_MARKER, _inject_record
+
+    turn_one = _inject_record([{"role": "user", "content": "hi"}], "record v1")
+    turn_two = _inject_record(turn_one, "record v2")
+
+    carriers = [m for m in turn_two if RECORD_MARKER in m["content"]]
+    assert len(carriers) == 1
+    assert "record v2" in carriers[0]["content"]
+    assert "record v1" not in carriers[0]["content"]
+
+
+def test_an_empty_record_drops_the_message_entirely():
+    from olite.runtime import RECORD_MARKER, _inject_record
+
+    seeded = _inject_record([{"role": "user", "content": "hi"}], "record v1")
+
+    assert not any(RECORD_MARKER in m["content"] for m in _inject_record(seeded, ""))
+
+
+def test_the_record_excerpt_stays_out_of_the_cached_system_prompt():
+    """It changes on every write; keeping it in the prefix would re-tokenize it each turn."""
+    from olite.runtime import RECORD_MARKER, _inject_record
+
+    injected = _inject_record([{"role": "system", "content": "seed"}], "record")
+
+    assert RECORD_MARKER not in injected[0]["content"]
+    assert RECORD_MARKER in injected[-1]["content"]
