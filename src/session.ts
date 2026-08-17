@@ -45,11 +45,29 @@ export function indexedDbStore(factory: IDBFactory | undefined = globalThis.inde
     };
 }
 
-/** One stored conversation per Galaxy history, as pi keys a session by its analysis directory. */
+/** Who the store is keyed for: pi's sessions sit in the OS user's home, so scope by Galaxy user. */
+export async function galaxyUserId(
+    galaxyRoot: string,
+    credentials: RequestCredentials,
+): Promise<string | undefined> {
+    try {
+        const res = await fetch(`${galaxyRoot}api/users/current`, { credentials });
+        if (!res.ok) {
+            return undefined;
+        }
+        const body = await res.json();
+        return typeof body?.id === "string" && body.id ? body.id : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+/** One stored conversation per user and history, as pi keys a session by home plus directory. */
 export class SessionMemory {
     constructor(
         private store: Store | null,
         private historyId?: string,
+        private userId?: string,
     ) {}
 
     /** No history means no session to key on: the eval harness and the dev page keep none. */
@@ -57,8 +75,9 @@ export class SessionMemory {
         return Boolean(this.store && this.historyId);
     }
 
+    // An anonymous Galaxy session has no id to scope by, so those still share a browser profile.
     private get key(): string {
-        return `session:${this.historyId}`;
+        return `session:${this.userId || "anon"}:${this.historyId}`;
     }
 
     async load(): Promise<any[] | null> {

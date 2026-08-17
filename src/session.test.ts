@@ -25,13 +25,31 @@ const CONVO = [
     { role: "assistant", content: "on it" },
 ];
 
+const USER = "u1";
+
 describe("SessionMemory", () => {
-    it("keys the conversation by history, as pi keys a session by its directory", async () => {
+    it("keys the conversation by user and history, as pi keys by home plus directory", async () => {
+        const store = memoryStore();
+
+        await new SessionMemory(store, HISTORY, USER).save(CONVO);
+
+        expect(Object.keys(store.data)).toEqual([`session:${USER}:${HISTORY}`]);
+    });
+
+    it("keeps users apart, so a shared browser profile does not leak a conversation", async () => {
+        const store = memoryStore();
+        await new SessionMemory(store, HISTORY, USER).save(CONVO);
+
+        expect(await new SessionMemory(store, HISTORY, "someone-else").load()).toBeNull();
+        expect(await new SessionMemory(store, HISTORY, USER).load()).toEqual(CONVO);
+    });
+
+    it("falls back to an anonymous scope when Galaxy reports no user", async () => {
         const store = memoryStore();
 
         await new SessionMemory(store, HISTORY).save(CONVO);
 
-        expect(Object.keys(store.data)).toEqual([`session:${HISTORY}`]);
+        expect(Object.keys(store.data)).toEqual([`session:anon:${HISTORY}`]);
     });
 
     it("restores what it stored", async () => {

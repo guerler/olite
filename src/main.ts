@@ -5,7 +5,7 @@ import { applyOrbitTheme } from "./orbit/theme";
 import { parseIncoming } from "./incoming";
 import { buildConfig } from "./config";
 import { describeError, lastLine, renderMessages, replayMessages, toolStatus } from "./transcript";
-import { SessionMemory, indexedDbStore } from "./session";
+import { SessionMemory, galaxyUserId, indexedDbStore } from "./session";
 import { createConfirm } from "./confirm-modal";
 import { PyodideManager } from "./pyodide/pyodide-manager";
 import { runOlite } from "./pyodide-runner";
@@ -109,8 +109,13 @@ async function main() {
     const seed = { role: "system", content: incoming.specs.ai_prompt || PROMPT_DEFAULT };
     const convo: Array<{ role: string; content: string }> = [seed];
 
-    // One conversation per history, as pi keys a session by its analysis directory.
-    const session = new SessionMemory(indexedDbStore(), config.history_id);
+    // One conversation per user and history, as pi keys a session by home plus directory.
+    const credentials = (process.env.credentials as RequestCredentials) || "include";
+    const session = new SessionMemory(
+        indexedDbStore(),
+        config.history_id,
+        await galaxyUserId(config.galaxy_root, credentials),
+    );
     const resetBtn = container.querySelector<HTMLButtonElement>("#reset-btn")!;
     // Replay before the boot notice, so the restored turns sit above it as history.
     let resumed = false;
@@ -145,7 +150,7 @@ async function main() {
 
     // Advances submitted Galaxy work between turns, so no turn blocks on a job.
     const watcher = new InvocationWatcher({
-        readState: galaxyStateReader(config.galaxy_root, (process.env.credentials as RequestCredentials) || "include"),
+        readState: galaxyStateReader(config.galaxy_root, credentials),
         onSettled: (w, state) => {
             const what = w.kind === "invocation" ? "Workflow invocation" : "Galaxy job";
             if (isFailure(w.kind, state)) {
