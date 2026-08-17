@@ -30,6 +30,17 @@ export function renderMessages(chat: ChatPanel, messages: any[], streamed: Set<s
     return spoke;
 }
 
+/** Repaint a stored transcript into the panel; loom: session-replay.js on `--continue`. */
+export function replayMessages(chat: ChatPanel, messages: any[]) {
+    for (const m of messages) {
+        if (m.role === "user") {
+            chat.addUserMessage(m.content || "");
+        } else if (m.role !== "system") {
+            renderMessages(chat, [m]);
+        }
+    }
+}
+
 function say(chat: ChatPanel, text: string) {
     chat.startAssistantMessage();
     chat.appendDelta(text);

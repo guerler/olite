@@ -4,7 +4,8 @@ import { ChatPanel } from "./orbit/chat/chat-panel";
 import { applyOrbitTheme } from "./orbit/theme";
 import { parseIncoming } from "./incoming";
 import { buildConfig } from "./config";
-import { describeError, lastLine, renderMessages, toolStatus } from "./transcript";
+import { describeError, lastLine, renderMessages, replayMessages, toolStatus } from "./transcript";
+import { SessionMemory, indexedDbStore } from "./session";
 import { createConfirm } from "./confirm-modal";
 import { PyodideManager } from "./pyodide/pyodide-manager";
 import { runOlite } from "./pyodide-runner";
@@ -26,6 +27,8 @@ async function main() {
             root: "/",
             visualization_config: {
                 dataset_id: pageUrl.searchParams.get("dataset_id") || "__test__",
+                // Dev only: a history to key the session on, as Galaxy supplies in production.
+                history_id: pageUrl.searchParams.get("history_id") || undefined,
                 settings: {},
             },
             visualization_plugin: await parseXML("olite.xml"),
@@ -60,7 +63,10 @@ async function main() {
               </button>
             </div>
           </div>
-          <div id="input-hint"><span>Enter to send</span></div>
+          <div id="input-hint">
+            <span>Enter to send</span>
+            <button id="reset-btn" class="hidden" title="Start a fresh conversation">New conversation</button>
+          </div>
         </div>
         <div id="divider"></div>
         <div id="artifact-pane" class="pane">
@@ -100,9 +106,22 @@ async function main() {
         galaxy_root: config.galaxy_root,
         openapi_url: `${config.galaxy_root}openapi.json`,
     });
-    const convo: Array<{ role: string; content: string }> = [
-        { role: "system", content: incoming.specs.ai_prompt || PROMPT_DEFAULT },
-    ];
+    const seed = { role: "system", content: incoming.specs.ai_prompt || PROMPT_DEFAULT };
+    const convo: Array<{ role: string; content: string }> = [seed];
+
+    // One conversation per history, as pi keys a session by its analysis directory.
+    const session = new SessionMemory(indexedDbStore(), config.history_id);
+    const resetBtn = container.querySelector<HTMLButtonElement>("#reset-btn")!;
+    // Replay before the boot notice, so the restored turns sit above it as history.
+    let resumed = false;
+    const restored = session.enabled ? await session.load() : null;
+    if (restored) {
+        convo.length = 0;
+        convo.push(...restored);
+        replayMessages(chat, restored);
+        resumed = true;
+        resetBtn.classList.remove("hidden");
+    }
 
     // Boot Pyodide (brain lives inside it).
     const isDev = (import.meta as any).env.DEV;
@@ -118,7 +137,9 @@ async function main() {
         .initialize()
         .then(() => {
             ready = true;
-            readyInfo.textContent = "olite ready. Ask me to run something.";
+            readyInfo.textContent = resumed
+                ? "Resumed this history's conversation. olite ready."
+                : "olite ready. Ask me to run something.";
         })
         .catch((e) => chat.addErrorMessage(`Failed to load olite: ${e}`));
 
@@ -214,6 +235,8 @@ async function main() {
             }
             convo.length = 0;
             convo.push(...(reply.messages || []));
+            void session.save(convo);
+            resetBtn.classList.toggle("hidden", !session.enabled);
             const artifacts = reply.artifacts || [];
             if (artifacts.length) {
                 document.body.classList.remove("artifact-collapsed");
@@ -274,6 +297,18 @@ async function main() {
 
     sendBtn.addEventListener("click", submit);
     abortBtn.addEventListener("click", abortCurrentTurn);
+    // loom: "reset session -- fresh start, no --continue".
+    resetBtn.addEventListener("click", async () => {
+        if (busy) {
+            return;
+        }
+        await session.clear();
+        convo.length = 0;
+        convo.push(seed);
+        messagesEl.innerHTML = "";
+        resetBtn.classList.add("hidden");
+        chat.addInfoMessage("Started a new conversation. The record on Galaxy is untouched.");
+    });
     input.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
