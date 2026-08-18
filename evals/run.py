@@ -96,6 +96,7 @@ def main():
                     # A pass is the artifact worth keeping, not just the verdict.
                     "chatText": run.chat_text if run.messages else "",
                     "messages": run.messages or [],
+                    "logs": run.logs or [],
                 }
             )
 

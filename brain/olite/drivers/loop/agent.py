@@ -84,6 +84,14 @@ class LoopDriver:
 
             truncated = reply.finish_reason == TRUNCATED
             tool_calls = reply.tool_calls
+            # An empty final is ambiguous without this: a choice to stop, or a spent budget.
+            _detail = (reply.usage or {}).get("completion_tokens_details") or {}
+            logs.append(
+                f"reply: finish={reply.finish_reason} content={len(reply.content or '')} "
+                f"tools={len(tool_calls or [])} "
+                f"completion={(reply.usage or {}).get('completion_tokens')} "
+                f"reasoning={_detail.get('reasoning_tokens')}"
+            )
 
             assistant = {
                 "role": "assistant",
