@@ -1,5 +1,5 @@
 {
-  "_comment": "Model matrix for the eval suite. Endpoint facts (base URL, key env var, rate limit, context window) come from the brain's provider registry in brain/olite/substrate/llm/providers.py, so the evals resolve an endpoint exactly the way the app does. A model whose envRequires are unset is skipped, not failed, so a local run works without every credential (loom's rule). To use an endpoint the registry does not know, give baseUrl instead of provider. The openrouter entries reach several vendors on one key, which is what makes a cross-model leaderboard a config change; requests transit a third party, so use an institutional endpoint for live runs on real Galaxy data.",
+  "_comment": "Model matrix for the eval suite. Endpoint facts (base URL, key env var, rate limit, context window) come from the brain's provider registry in brain/olite/substrate/llm/providers.py, so the evals resolve an endpoint exactly the way the app does. A model whose envRequires are unset is skipped, not failed, so a local run works without every credential (loom's rule). To use an endpoint the registry does not know, give baseUrl instead of provider. The openrouter entries reach several vendors on one key, which is what makes a cross-model leaderboard a config change; requests transit a third party, so use an institutional endpoint for live runs on real Galaxy data. The or-free-* entries run on OpenRouter's :free variants, which need no credits but carry a low daily request cap; the other openrouter entries need a credit balance and will 402 without one.",
   "models": [
     {
       "id": "gemini-3.7-flash",
@@ -62,6 +62,22 @@
       "id": "or-gemini-3.1-flash-lite",
       "provider": "openrouter",
       "model": "google/gemini-3.1-flash-lite",
+      "envRequires": [
+        "OPENROUTER_KEY"
+      ]
+    },
+    {
+      "id": "or-free-nemotron-ultra",
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "envRequires": [
+        "OPENROUTER_KEY"
+      ]
+    },
+    {
+      "id": "or-free-gpt-oss-20b",
+      "provider": "openrouter",
+      "model": "openai/gpt-oss-20b:free",
       "envRequires": [
         "OPENROUTER_KEY"
       ]
