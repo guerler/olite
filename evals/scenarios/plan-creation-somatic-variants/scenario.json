@@ -1,18 +1,33 @@
 {
   "name": "plan creation: somatic variant calling from tumour/normal pairs",
-  "description": "Paired tumour/normal calling — a plan that omits the pairing or names no caller has misunderstood the assay.",
+  "description": "Paired tumour/normal calling \u2014 a plan that omits the pairing or names no caller has misunderstood the assay. Two turns, as in loom: the agent is expected to surface its assumptions first, and the second turn confirms them and asks for the formal plan. A single-turn port made this unpassable for an agent following the operating-discipline block.",
   "tier": 2,
   "inputs": [
-    "I have matched tumour and normal exome BAMs for 6 patients. Draft a plan to call somatic variants and annotate them. Nothing should run yet."
+    "I have matched tumour and normal exome BAMs for 6 patients. Draft a plan to call somatic variants and annotate them. Nothing should run yet.",
+    "Yes, those assumptions are fine. Human, GRCh38, around 100x tumour / 50x normal coverage, Illumina paired-end 150bp. Go ahead and draft the formal plan now."
   ],
   "timeoutMs": 180000,
   "assertions": {
     "plan": {
       "exists": true,
-      "routingIn": ["galaxy", "remote"],
+      "routingIn": [
+        "galaxy",
+        "remote"
+      ],
       "minPendingSteps": 3,
-      "mentionsOneOf": ["Mutect", "MuTect2", "VarScan", "Strelka", "LoFreq", "bcftools", "SnpEff", "VEP"]
+      "mentionsOneOf": [
+        "Mutect",
+        "MuTect2",
+        "VarScan",
+        "Strelka",
+        "LoFreq",
+        "bcftools",
+        "SnpEff",
+        "VEP"
+      ]
     },
-    "behavior": { "doesNotExecute": true }
+    "behavior": {
+      "doesNotExecute": true
+    }
   }
 }
