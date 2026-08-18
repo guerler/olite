@@ -1,14 +1,31 @@
 """The `llm`-gated port the loop calls: resolve an endpoint, send, parse."""
 
+import asyncio
 import copy
 import logging
 from dataclasses import replace
+
+from olite.exceptions import ProviderError
 
 from ..http import http
 from .api import get_adapter
 from .providers import resolve
 
 logger = logging.getLogger(__name__)
+
+# One resend for a 200 that carried no usable reply; more would hide a broken endpoint.
+EMPTY_REPLY_ATTEMPTS = 2
+EMPTY_REPLY_BACKOFF = 2.0
+
+
+def _report_empty(on_retry, wait, attempt):
+    """Announce the wait the way a rate-limit wait is announced, so it is not a silent pause."""
+    if on_retry is None:
+        return
+    try:
+        on_retry({"status": 200, "wait": wait, "attempt": attempt, "of": EMPTY_REPLY_ATTEMPTS - 1})
+    except Exception:
+        logger.debug("retry listener raised", exc_info=True)
 
 
 class Llm:
@@ -60,16 +77,27 @@ class Llm:
             # This endpoint rejects the whole request, not the offending tool.
             names = ", ".join(f"{name} ({size} bytes)" for name, size in oversized)
             raise ValueError(f"Tool schema too large for {self.target.provider.name}: {names}")
-        await self._limiter.acquire()
-        payload = await http.request(
-            method="POST",
-            url=self.adapter.url(self.target),
-            headers=self.adapter.headers(self.target),
-            body=self.adapter.build_request(self.target, messages, tools, tool_choice, parallel_tools),
-            signal=cancellation.signal if cancellation else None,
-            on_retry=on_retry,
-        )
-        return self.adapter.parse_reply(payload)
+        body = self.adapter.build_request(self.target, messages, tools, tool_choice, parallel_tools)
+        for attempt in range(EMPTY_REPLY_ATTEMPTS):
+            await self._limiter.acquire()
+            payload = await http.request(
+                method="POST",
+                url=self.adapter.url(self.target),
+                headers=self.adapter.headers(self.target),
+                body=body,
+                signal=cancellation.signal if cancellation else None,
+                on_retry=on_retry,
+            )
+            try:
+                return self.adapter.parse_reply(payload)
+            except ProviderError:
+                # A 200 carrying nothing usable is transport-shaped, so it is retried here
+                # rather than in the loop, which pi leaves to its caller.
+                if attempt == EMPTY_REPLY_ATTEMPTS - 1:
+                    raise
+                logger.warning("empty provider reply, retrying (%d/%d)", attempt + 1, EMPTY_REPLY_ATTEMPTS - 1)
+                _report_empty(on_retry, EMPTY_REPLY_BACKOFF, attempt + 1)
+                await asyncio.sleep(EMPTY_REPLY_BACKOFF)
 
 
 async def _probe_window(base_url):
