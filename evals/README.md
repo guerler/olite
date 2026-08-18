@@ -9,7 +9,7 @@ rests on, and the one thing a unit test cannot answer.
 python evals/run.py                    # every scenario x every available model
 python evals/run.py plan-creation      # filter scenarios by substring
 python evals/run.py --model gemini     # filter models by substring
-python evals/run.py --json out.json    # also write raw transcripts and failures
+python evals/run.py --json out.json    # write transcripts + chat text + failures, pass or fail
 python evals/run.py --delay 5          # extra pacing on top of the provider's own
 ```
 

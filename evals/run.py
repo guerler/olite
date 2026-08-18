@@ -93,6 +93,9 @@ def main():
                         {"assertion": f.assertion, "detail": f.detail, "dimension": f.dimension} for f in failures
                     ],
                     "toolsCalled": run.tools_called,
+                    # A pass is the artifact worth keeping, not just the verdict.
+                    "chatText": run.chat_text if run.messages else "",
+                    "messages": run.messages or [],
                 }
             )
 
