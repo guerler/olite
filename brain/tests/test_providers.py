@@ -211,3 +211,31 @@ def test_a_configured_window_is_not_overridden_by_a_probe():
     llm = Llm({"ai_provider": "local", "ai_context_window": 8000}, CapabilityManifest())
     asyncio.run(llm.init())
     assert llm.target.context_window == 8000
+
+
+def test_openrouter_reaches_several_vendors_on_one_key():
+    """The point of the entry: one credential, so a cross-model matrix is config."""
+    for model, window in (
+        ("anthropic/claude-sonnet-5", 1_000_000),
+        ("openai/gpt-5.6-terra", 1_050_000),
+        ("deepseek/deepseek-v4-flash-0731", 1_310_720),
+    ):
+        target = resolve({"ai_provider": "openrouter", "ai_model": model})
+        assert target.base_url == "https://openrouter.ai/api/v1"
+        assert target.model.id == model
+        assert target.context_window == window
+
+
+def test_openrouter_states_no_rate_limit_because_it_has_no_fixed_one():
+    """Gemini's 5/minute was measured; OpenRouter's scales with credit, so none is invented."""
+    from olite.substrate.llm.providers import DEFAULT_RATE_LIMIT, OPENROUTER
+
+    assert OPENROUTER.rate_limit is None
+    assert resolve({"ai_provider": "openrouter", "ai_model": "anthropic/claude-sonnet-5"}).rate_limit == DEFAULT_RATE_LIMIT
+
+
+def test_an_unlisted_openrouter_model_still_resolves():
+    """The catalog moves; an id the registry has not seen must not be a hard failure."""
+    target = resolve({"ai_provider": "openrouter", "ai_model": "some/new-model"})
+    assert target.model.id == "some/new-model"
+    assert target.context_window == DEFAULT_CONTEXT_WINDOW

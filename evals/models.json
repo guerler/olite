@@ -1,30 +1,70 @@
 {
-  "_comment": "Model matrix for the eval suite. Endpoint facts (base URL, key env var, rate limit, context window) come from the brain's provider registry in brain/olite/substrate/llm/providers.py, so the evals resolve an endpoint exactly the way the app does. A model whose envRequires are unset is skipped, not failed, so a local run works without every credential (loom's rule). To use an endpoint the registry does not know, give baseUrl instead of provider.",
+  "_comment": "Model matrix for the eval suite. Endpoint facts (base URL, key env var, rate limit, context window) come from the brain's provider registry in brain/olite/substrate/llm/providers.py, so the evals resolve an endpoint exactly the way the app does. A model whose envRequires are unset is skipped, not failed, so a local run works without every credential (loom's rule). To use an endpoint the registry does not know, give baseUrl instead of provider. The openrouter entries reach several vendors on one key, which is what makes a cross-model leaderboard a config change; requests transit a third party, so use an institutional endpoint for live runs on real Galaxy data.",
   "models": [
     {
       "id": "gemini-3.7-flash",
       "provider": "gemini",
       "model": "gemini-3.7-flash",
-      "envRequires": ["GEMINI_KEY"]
+      "envRequires": [
+        "GEMINI_KEY"
+      ]
     },
     {
       "id": "gemini-3.1-flash-lite",
       "provider": "gemini",
       "model": "gemini-3.1-flash-lite",
-      "envRequires": ["GEMINI_KEY"]
+      "envRequires": [
+        "GEMINI_KEY"
+      ]
     },
     {
       "id": "deepseek-v4-flash",
       "provider": "deepseek",
       "model": "deepseek-v4-flash",
-      "envRequires": ["DEEPSEEK_KEY"]
+      "envRequires": [
+        "DEEPSEEK_KEY"
+      ]
     },
     {
       "id": "local-llama",
       "provider": "local",
       "model": "local",
-      "envRequires": ["LOCAL_LLM_URL"],
+      "envRequires": [
+        "LOCAL_LLM_URL"
+      ],
       "baseUrl": "${LOCAL_LLM_URL}"
+    },
+    {
+      "id": "or-claude-sonnet-5",
+      "provider": "openrouter",
+      "model": "anthropic/claude-sonnet-5",
+      "envRequires": [
+        "OPENROUTER_KEY"
+      ]
+    },
+    {
+      "id": "or-gpt-5.6-terra",
+      "provider": "openrouter",
+      "model": "openai/gpt-5.6-terra",
+      "envRequires": [
+        "OPENROUTER_KEY"
+      ]
+    },
+    {
+      "id": "or-deepseek-v4-flash",
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-v4-flash-0731",
+      "envRequires": [
+        "OPENROUTER_KEY"
+      ]
+    },
+    {
+      "id": "or-gemini-3.1-flash-lite",
+      "provider": "openrouter",
+      "model": "google/gemini-3.1-flash-lite",
+      "envRequires": [
+        "OPENROUTER_KEY"
+      ]
     }
   ]
 }

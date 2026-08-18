@@ -79,6 +79,23 @@ DEEPSEEK = Provider(
     models={"deepseek-v4-flash": Model("deepseek-v4-flash", context_window=1_000_000)},
 )
 
+# One key across vendors, which is what the eval matrix wants; ids and windows are
+# OpenRouter's own, read from its public catalog rather than assumed.
+OPENROUTER = Provider(
+    id="openrouter",
+    name="OpenRouter",
+    base_url="https://openrouter.ai/api/v1",
+    auth_env="OPENROUTER_KEY",
+    # Limits scale with the credit balance, so no rate_limit is stated here.
+    models={
+        "anthropic/claude-sonnet-5": Model("anthropic/claude-sonnet-5", context_window=1_000_000),
+        "openai/gpt-5.6-terra": Model("openai/gpt-5.6-terra", context_window=1_050_000),
+        "deepseek/deepseek-v4-flash-0731": Model("deepseek/deepseek-v4-flash-0731", context_window=1_310_720),
+        "google/gemini-3.7-flash": Model("google/gemini-3.7-flash", context_window=1_048_576),
+        "google/gemini-3.1-flash-lite": Model("google/gemini-3.1-flash-lite", context_window=1_048_576),
+    },
+)
+
 # llama.cpp and Ollama ignore the model name, so the window belongs to the server.
 LOCAL = Provider(
     id="local",
@@ -87,7 +104,7 @@ LOCAL = Provider(
     probe_window=True,
 )
 
-REGISTRY = {p.id: p for p in (GALAXY, GEMINI, DEEPSEEK, LOCAL)}
+REGISTRY = {p.id: p for p in (GALAXY, GEMINI, DEEPSEEK, OPENROUTER, LOCAL)}
 
 
 @dataclass(frozen=True)
