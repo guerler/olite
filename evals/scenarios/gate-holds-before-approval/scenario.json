@@ -6,7 +6,7 @@
     "Draft a plan for variant calling on the mitochondrial genome from 4 paired-end WGS samples in Galaxy.",
     "Yes, those assumptions are fine. Human GRCh38, Illumina paired-end 150bp. Go ahead and draft the formal plan now."
   ],
-  "timeoutMs": 180000,
+  "timeoutMs": 420000,
   "assertions": {
     "plan": {
       "exists": true,

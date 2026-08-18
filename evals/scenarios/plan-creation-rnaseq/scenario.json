@@ -6,15 +6,29 @@
     "I have paired-end RNA-seq FASTQ files from two conditions (treated vs control, 4 replicates each). Help me draft a plan to identify differentially expressed genes. Don't execute anything yet.",
     "Yes, those assumptions look right. Use hg38 as the reference. Draft the formal plan now."
   ],
-  "timeoutMs": 180000,
+  "timeoutMs": 420000,
   "assertions": {
     "plan": {
       "exists": true,
-      "routingIn": ["galaxy", "remote"],
+      "routingIn": [
+        "galaxy",
+        "remote"
+      ],
       "minPendingSteps": 4,
       "eachStepHasDescription": true,
-      "mentionsOneOf": ["HISAT2", "STAR", "salmon", "kallisto", "DESeq2", "edgeR", "limma", "featureCounts"]
+      "mentionsOneOf": [
+        "HISAT2",
+        "STAR",
+        "salmon",
+        "kallisto",
+        "DESeq2",
+        "edgeR",
+        "limma",
+        "featureCounts"
+      ]
     },
-    "behavior": { "doesNotExecute": true }
+    "behavior": {
+      "doesNotExecute": true
+    }
   }
 }

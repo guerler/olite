@@ -6,7 +6,7 @@
     "I have shotgun metagenomic sequencing from 12 gut microbiome samples. Draft a plan to get taxonomic and functional profiles. Don't run anything yet.",
     "Yes, those assumptions all look right. Illumina paired-end 150bp, ~20M read pairs per sample, human gut, and the FASTQs are already in my history. Go ahead and draft the formal plan now."
   ],
-  "timeoutMs": 180000,
+  "timeoutMs": 420000,
   "assertions": {
     "plan": {
       "exists": true,

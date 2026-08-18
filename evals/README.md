@@ -38,7 +38,8 @@ The stub keeps the **full 46-tool surface advertised**. loom trims to
 `--tools read,write,edit` for its plan scenarios; olite deliberately does not, because
 a live run showed the model behaves differently with the whole surface in context
 (~16k tokens of schemas) than with a handful — trimming would measure a condition
-olite never runs in.
+olite never runs in. It also makes runs slower, which is why the two-turn plan scenarios
+allow 7 minutes rather than loom's 2.5.
 
 ## Models
 
