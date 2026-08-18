@@ -3,6 +3,8 @@
 import json
 from dataclasses import dataclass, field
 
+from olite.exceptions import ProviderError
+
 MIN = 0.0000001
 MAX = 999999999
 TEMPERATURE = 0.3
@@ -56,13 +58,19 @@ class OpenAICompletions:
         payload = payload if isinstance(payload, dict) else {}
         choice = (payload.get("choices") or [{}])[0] or {}
         message = choice.get("message") or {}
-        return Reply(
+        reply = Reply(
             content=message.get("content") or "",
             tool_calls=message.get("tool_calls") or [],
             finish_reason=choice.get("finish_reason"),
             usage=payload.get("usage") or {},
             raw=payload,
         )
+        # pi turns an unusable provider response into a terminal error rather than an
+        # empty turn (`stopReason: "error"`); a reply with no stop reason and nothing
+        # in it is the endpoint failing, not the model choosing to stop.
+        if reply.finish_reason is None and not reply.content and not reply.tool_calls:
+            raise ProviderError("The model provider returned an empty response.")
+        return reply
 
     def oversized_tools(self, target, tools):
         """Tool schemas this endpoint would reject, so we do not send a doomed request."""

@@ -239,3 +239,26 @@ def test_an_unlisted_openrouter_model_still_resolves():
     target = resolve({"ai_provider": "openrouter", "ai_model": "some/new-model"})
     assert target.model.id == "some/new-model"
     assert target.context_window == DEFAULT_CONTEXT_WINDOW
+
+
+def test_an_unusable_provider_response_is_an_error_not_an_empty_turn():
+    """pi turns a failed provider response into stopReason "error"; a silent empty turn
+    would be graded as the agent choosing to stop, which is a different claim."""
+    from olite.exceptions import ProviderError
+
+    adapter = get_adapter("openai-completions")
+
+    with pytest.raises(ProviderError):
+        adapter.parse_reply({"choices": []})
+    with pytest.raises(ProviderError):
+        adapter.parse_reply({})
+
+
+def test_a_deliberate_empty_reply_with_a_stop_reason_still_parses():
+    """A model may legitimately stop with nothing to add; that is not a provider failure."""
+    adapter = get_adapter("openai-completions")
+
+    reply = adapter.parse_reply({"choices": [{"message": {"content": ""}, "finish_reason": "stop"}]})
+
+    assert reply.finish_reason == "stop"
+    assert reply.content == ""
