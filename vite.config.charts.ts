@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { defineConfig } from "vite";
 
 const env = {
@@ -42,14 +43,38 @@ const proxyGalaxy = () => ({
     target: env.GALAXY_ROOT,
 });
 
-// The /llm proxy needs a concrete origin even when a provider supplies it.
-const LLM_TARGETS: Record<string, { root: string; path: string }> = {
-    gemini: { root: "https://generativelanguage.googleapis.com", path: "/v1beta/openai" },
-    deepseek: { root: "https://api.deepseek.com", path: "/v1" },
-    openrouter: { root: "https://openrouter.ai", path: "/api/v1" },
-    local: { root: "http://127.0.0.1:11434", path: "/v1" },
-};
-const llmTarget = LLM_TARGETS[env.LLM_PROVIDER] || { root: "http://127.0.0.1:11434", path: "/v1" };
+// The /llm proxy needs a concrete origin. The brain's registry is the authority for what
+// each provider's is, so read it rather than restating it here and letting the two drift.
+const READ_REGISTRY = [
+    "import json",
+    "from urllib.parse import urlsplit",
+    "from olite.substrate.llm.providers import REGISTRY",
+    "out = {}",
+    "for p in REGISTRY.values():",
+    "    if not p.base_url:",
+    "        continue",
+    "    u = urlsplit(p.base_url)",
+    "    out[p.id] = {'root': f'{u.scheme}://{u.netloc}', 'path': u.path or '/v1'}",
+    "print(json.dumps(out))",
+].join("\n");
+
+function llmTargets(): Record<string, { root: string; path: string }> {
+    try {
+        const out = execFileSync("python3", ["-c", READ_REGISTRY], { cwd: "brain", encoding: "utf8" });
+        return JSON.parse(out);
+    } catch {
+        console.warn("Could not read the provider registry; set LLM_ROOT and LLM_PATH explicitly.");
+        return {};
+    }
+}
+
+const targets = llmTargets();
+if (env.LLM_PROVIDER && !targets[env.LLM_PROVIDER] && !env.LLM_ROOT) {
+    // Falling through to the local default here is the trap that answers with the wrong model.
+    const known = Object.keys(targets).sort().join(", ") || "none readable";
+    throw new Error(`LLM_PROVIDER=${env.LLM_PROVIDER} is not in the brain's registry (${known}).`);
+}
+const llmTarget = targets[env.LLM_PROVIDER] || { root: "http://127.0.0.1:11434", path: "/v1" };
 const llmRoot = env.LLM_ROOT || llmTarget.root;
 const llmPath = env.LLM_PATH || llmTarget.path;
 
