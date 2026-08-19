@@ -86,6 +86,28 @@ drawn in chat and only an *approved* plan reaches the record. A scenario that ne
 approves anything should therefore find nothing on the record, and that is a property
 worth grading rather than papering over.
 
+## Ported from loom, and what could not be
+
+The suite began as a port of loom's scenarios. Four exist in both suites with byte-identical
+inputs and thresholds (`plan-creation-rnaseq`, `-metagenomics`, `-somatic-variants`,
+`behavior-underspecified-ask`) — those are the cross-suite comparison set.
+
+Of loom's seven remaining scenarios, as of 2026-08-19:
+
+| loom scenario | here |
+|---|---|
+| `udt-authoring-threads` | **ported verbatim** — same input, same assertions |
+| `plan-creation-scrna-celltypes` | **ported** — only `routingIn` adapted, olite has no `hybrid` |
+| `plan-creation-pharmacogenomics` | **adapted, not faithful** — loom expects `[local, hybrid]`; olite cannot route local, so it grades the refusal instead. Do not use it in a comparison |
+| `routing-clear-local` | **not portable** — its correct answer is `[local]`, the accepted divergence |
+| `routing-clear-galaxy` | not ported — olite routes only `[galaxy]`/`[remote]`, so it passes trivially |
+| `smoke-echo` | covered by `smoke-answers` |
+| `init-gate-galaxy-no-connection` | **not portable** — drives loom's `/execute` slash command, which olite has no equivalent of |
+
+Porting `udt-authoring-threads` required two assertion forms loom has and this suite did
+not: `chatText.mustInclude` and `toolCalls.mustInclude` with `argsContains`. Both were added
+under **loom's key names**, so further scenarios port as copies rather than translations.
+
 ## What this is not
 
 **Not a single-run verdict.** Behaviour varies run to run, and n=1 hides it — a scenario

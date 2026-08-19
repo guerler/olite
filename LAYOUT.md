@@ -93,8 +93,8 @@ purpose; both pass the same `CapabilityManifest`.
 
   The system prompt mirrors loom's split: `ai_prompt` (in `olite.xml`) carries the
   identity, as pi's base prompt does, and `brain/olite/prompt.py` appends Orbit's
-  discipline blocks, as the loom extension does. The notebook-dependent blocks are
-  not ported yet (see `orbit-faithfulness.md`).
+  discipline blocks, as the loom extension does. The record blocks and the per-turn
+  record excerpt are ported too, so the split is complete.
 - **Graph (crystallized agent.yml) → scoped catalog.** The `Catalog` (auto-derived
   from the OpenAPI spec, prefix/method/capability-scoped) is where declared, bounded
   op sets are the point — a process names exactly the ops it touches. `visualize_dataset`
@@ -218,4 +218,3 @@ a narrative, and a Mermaid diagram.
 - Wider write parity — grow `WRITE_ALLOWLIST` op by op (invoke_workflow, upload,
   create_page) as parity needs them, each an explicit grantable capability.
 
-See `orbit-faithfulness.md` in the thesis notes for the full component audit.
