@@ -70,7 +70,9 @@ def build_config(model):
         "ai_provider": model.get("provider"),
         "ai_model": model["model"],
         # Write is granted, or "did not execute" would assert about an unadvertised tool.
-        "capabilities": ["llm", "local", "read", "write"],
+        # Trimmable so the tool-surface hypothesis can be tested; loom runs plan
+        # scenarios with a smaller surface than olite advertises.
+        "capabilities": os.environ.get("OLITE_EVAL_CAPABILITIES", "llm,local,read,write").split(","),
     }
     if base:
         config["ai_base_url"] = base.rstrip("/")
