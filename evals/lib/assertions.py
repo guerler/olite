@@ -32,6 +32,8 @@ def evaluate(scenario, run):
     a = scenario.get("assertions") or {}
 
     _messages(a.get("messages"), run, failures, exercised)
+    _tool_calls(a.get("toolCalls"), run, failures, exercised)
+    _chat_text(a.get("chatText"), run, failures, exercised)
     _plan(a.get("plan"), run, failures, exercised)
     _behavior(a.get("behavior"), run, failures, exercised)
     return failures, exercised
@@ -51,6 +53,50 @@ def _messages(spec, run, failures, exercised):
             )
     if spec.get("repliesInChat") and not run.chat_text.strip():
         failures.append(Failure("messages.repliesInChat", "the turn produced no chat text", "behavior"))
+
+
+def _issued_calls(run):
+    """Every tool call the agent made, with its raw arguments, from the transcript."""
+    out = []
+    for m in run.messages or []:
+        for call in (m.get("tool_calls") or []) if isinstance(m, dict) else []:
+            fn = call.get("function") or {}
+            out.append((fn.get("name") or "", fn.get("arguments") or ""))
+    return out
+
+
+def _tool_calls(spec, run, failures, exercised):
+    """loom's `toolCalls.mustInclude`, including its `argsContains` form."""
+    if not spec:
+        return
+    exercised.add("behavior")
+    issued = _issued_calls(run)
+    for want in spec.get("mustInclude") or []:
+        name = want.get("name")
+        contains = want.get("argsContains") or {}
+        hit = False
+        for called, args in issued:
+            if called != name:
+                continue
+            if all(str(v) in args for v in contains.values()):
+                hit = True
+                break
+        if not hit:
+            detail = f"never called {name}"
+            if contains:
+                detail += f" with {contains}"
+            failures.append(Failure("toolCalls.mustInclude", detail, "behavior"))
+
+
+def _chat_text(spec, run, failures, exercised):
+    """loom's `chatText.mustInclude`: the answer itself has to contain something."""
+    if not spec:
+        return
+    exercised.add("behavior")
+    text = run.chat_text or ""
+    for needle in spec.get("mustInclude") or []:
+        if needle not in text:
+            failures.append(Failure("chatText.mustInclude", f"chat never contained {needle!r}", "behavior"))
 
 
 def _plan(spec, run, failures, exercised):
