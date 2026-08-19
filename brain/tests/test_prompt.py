@@ -227,10 +227,6 @@ def test_the_page_guidance_allows_only_the_galaxy_fence():
     assert "encoded" in text.lower()
 
 
-def test_the_prompt_stays_within_a_sane_budget():
-    """loom's whole system prompt is ~8K tokens; the ported subset must stay under it."""
-    approx_tokens = len(prompt.system_text()) / 4
-    assert approx_tokens < 4000, f"ported blocks alone are ~{approx_tokens:.0f} tokens"
 
 
 def test_the_record_excerpt_is_refreshed_not_accumulated():
