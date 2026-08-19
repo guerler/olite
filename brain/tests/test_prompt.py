@@ -267,3 +267,20 @@ def test_the_record_covers_ad_hoc_work_not_only_plans():
 
     assert "ad-hoc" in text
     assert "even when no plan was drafted" in text
+
+
+def test_the_record_write_happens_in_the_same_turn_as_the_work():
+    """A live run invoked a workflow and wrote nothing; deferring the write loses it."""
+    text = " ".join(prompt.RECORD_WRITES.lower().split())
+
+    assert "write the record in the same turn you do the work" in text
+    assert "before you reply" in text
+
+
+def test_the_agent_may_not_claim_a_record_write_it_did_not_make():
+    """loom's shape: "if you did not record it, you must not claim a poller is watching it".
+    A live run reported "logged in the analysis notebook" over an empty page."""
+    text = " ".join(prompt.RECORD_WRITES.lower().split())
+
+    assert "do not claim the record was updated unless `update_page` returned" in text
+    assert "binds the record; it does not write to it" in text
