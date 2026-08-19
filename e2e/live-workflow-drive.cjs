@@ -135,6 +135,24 @@ const api = async (path) => {
           !!(narrated && narrated.page.slug === `olite-${HISTORY}`),
           narrated ? `wrote to ${narrated.page.slug}` : "n/a");
 
+    // A record can name the work and still be wrong: the ids are the reproducibility
+    // claim, and a plausible-looking wrong one points the reader at somebody else's work.
+    if (narrated) {
+        const known = new Set([HISTORY, WORKFLOW, DATASET, invoked && invoked.id, bound && bound.id]);
+        for (const d of (await api(`api/histories/${HISTORY}/contents?v=dev&keys=id`)) || []) known.add(d.id);
+        const inv = invoked && (await api(`api/invocations/${invoked.id}`));
+        for (const step of (inv && inv.steps) || []) known.add(step.id);
+        for (const out of Object.values((inv && inv.outputs) || {})) known.add(out.id);
+        known.delete(undefined);
+        known.delete(null);
+        // Galaxy ids are 16 lowercase hex chars; anything of that shape we cannot account
+        // for was either invented or copied from an unrelated object.
+        const cited = narrated.content.match(/\b[0-9a-f]{16}\b/g) || [];
+        const unknown = [...new Set(cited.filter((id) => !known.has(id)))];
+        check("every id in the record belongs to this run", unknown.length === 0,
+              unknown.length ? `unaccounted: ${unknown.join(", ")}` : `${cited.length} id(s) checked`);
+    }
+
     await page.screenshot({ path: `${OUT}/live-workflow.png`, fullPage: true });
     console.log(failed ? `\n${failed} check(s) failed` : "\nall checks passed");
     await browser.close();

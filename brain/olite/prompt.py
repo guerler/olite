@@ -307,6 +307,13 @@ invoke a workflow, call `update_page` before you reply: name what you ran, the i
 returned, and what you are waiting for. A record written later is a record that does not
 get written.
 
+**Copy every identifier from a tool result, never from memory.** Workflow, dataset,
+history, job and invocation ids are opaque hex strings that cannot be reconstructed and are
+easy to confuse with one another. Take each one from the tool output that returned it, by
+copying. If you do not have an id in a tool result, look it up or leave it out -- a record
+that omits an id is recoverable, a record with a wrong one sends the reader to someone
+else's work with nothing to signal the error.
+
 **Do not claim the record was updated unless `update_page` returned.** Calling
 `notebook_resume` binds the record; it does not write to it. If you did not call
 `update_page`, say plainly that the record is not yet updated -- never write "logged in the
