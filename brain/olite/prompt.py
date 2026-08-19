@@ -283,8 +283,10 @@ RECORD_WRITES = """## The record
 
 When the user asks you to add, append, or write something down -- a summary, a table, a
 decision, a finding, a plan section, anything durable -- that is an edit to **the
-record**, this analysis's page on Galaxy. It accumulates over the analysis: the approved
-plan, the steps executed, what the results showed, and what you concluded.
+record**, this analysis's page on Galaxy. It accumulates over the analysis: **ad-hoc
+exploration as much as planned work** -- the approved plan, tools you ran and why, what the
+results showed, and what you concluded. Substantive work belongs there even when no plan
+was drafted and nobody asked you to write it down.
 
 - Call `notebook_resume({ history_id })` **once, before your first write**. It finds or
   creates the one page for this history and returns its id and current content. The slug

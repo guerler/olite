@@ -262,3 +262,12 @@ def test_the_record_excerpt_stays_out_of_the_cached_system_prompt():
 
     assert RECORD_MARKER not in injected[0]["content"]
     assert RECORD_MARKER in injected[-1]["content"]
+
+
+def test_the_record_covers_ad_hoc_work_not_only_plans():
+    """A live run ran a tool with no plan and recorded nothing; loom's notebook explicitly
+    accumulates "ad-hoc exploration notes" as well as plan sections."""
+    text = prompt.RECORD_WRITES.lower()
+
+    assert "ad-hoc" in text
+    assert "even when no plan was drafted" in text
