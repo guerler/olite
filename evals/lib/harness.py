@@ -22,7 +22,27 @@ class StubGalaxy:
         self.calls.append(("GET", path))
         if "api/histories" in path:
             return [{"id": "hist1", "name": "Eval history", "state": "ok"}]
+        if path.startswith("api/tools/"):
+            # One real-shaped tool, so an execution scenario can verify before running.
+            return {
+                "id": "addValue", "name": "Add column", "version": "1.0.0",
+                "description": "to an existing dataset",
+                "inputs": [
+                    {"name": "exp", "type": "text", "label": "Add this value", "value": "1"},
+                    {"name": "input", "type": "data", "label": "to Dataset", "extensions": ["tabular"]},
+                    {"name": "iterate", "type": "select", "label": "Iterate?", "value": "no",
+                     "options": [["NO", "no", False], ["YES", "yes", False]]},
+                ],
+                "outputs": [{"name": "out_file1", "format": "input"}],
+            }
         if "api/tools" in path:
+            # Only answer for the tool the execution scenario names; a stub that returns the
+            # same tool for every query would teach the model the wrong thing.
+            q = path.split("q=")[-1].split("&")[0].lower() if "q=" in path else ""
+            if "addvalue" in q or "add+column" in q or "add%20column" in q:
+                return [{"id": "addValue", "name": "Add column",
+                         "description": "to an existing dataset",
+                         "panel_section_name": "Text Manipulation"}]
             return []
         if "api/pages" in path:
             return []
