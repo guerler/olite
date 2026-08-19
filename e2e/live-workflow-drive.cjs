@@ -95,17 +95,34 @@ const api = async (path) => {
               await wait(() => /invocation .* finished|Workflow invocation/i.test(document.body.innerText), 240000));
     }
 
-    // The record: found by the per-history slug, written by the agent.
+    // The agent may invoke into a history other than the bound one, so check both: the
+    // bound history's record must carry the shell-written session block, and whichever
+    // record the agent wrote must describe the work.
     const pages = (await api("api/pages?limit=500")) || [];
-    const rec = pages.find((p) => p.slug === `olite-${HISTORY}`);
-    check("record page exists", !!rec, rec ? rec.id : `no page with slug olite-${HISTORY}`);
-    if (rec) {
-        const full = await api(`api/pages/${rec.id}`);
-        const content = (full && full.content) || "";
-        check("record has content beyond the starter", content.length > 200, `${content.length} chars`);
-        check("record mentions the workflow", /workflow|invocation/i.test(content));
-        require("fs").writeFileSync(`${OUT}/live-record.md`, content);
+    const read = async (p) => ((await api(`api/pages/${p.id}`)) || {}).content || "";
+
+    const bound = pages.find((p) => p.slug === `olite-${HISTORY}`);
+    check("bound history has a record", !!bound, bound ? bound.id : `no olite-${HISTORY}`);
+    if (bound) {
+        const content = await read(bound);
+        check("shell wrote the session block", content.includes("```olite-session"),
+              `${content.length} chars`);
+        require("fs").writeFileSync(`${OUT}/live-record-bound.md`, content);
     }
+
+    const olitePages = pages.filter((p) => (p.slug || "").startsWith("olite-"));
+    let narrated = null;
+    for (const p of olitePages) {
+        const c = await read(p);
+        if (/invocation|workflow/i.test(c) && c.length > 200) narrated = { page: p, content: c };
+    }
+    check("some record describes the work", !!narrated,
+          narrated ? `${narrated.page.slug} (${narrated.content.length} chars)` : "none did");
+    if (narrated) require("fs").writeFileSync(`${OUT}/live-record.md`, narrated.content);
+
+    check("the work stayed in the bound history",
+          !!(narrated && narrated.page.slug === `olite-${HISTORY}`),
+          narrated ? `wrote to ${narrated.page.slug}` : "n/a");
 
     await page.screenshot({ path: `${OUT}/live-workflow.png`, fullPage: true });
     console.log(failed ? `\n${failed} check(s) failed` : "\nall checks passed");
