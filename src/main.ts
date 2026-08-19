@@ -6,6 +6,7 @@ import { parseIncoming } from "./incoming";
 import { buildConfig } from "./config";
 import { describeError, lastLine, renderMessages, replayMessages, toolStatus } from "./transcript";
 import { SessionMemory, galaxyUserId, indexedDbStore } from "./session";
+import { writeSessionSummary } from "./session-summary";
 import { createConfirm } from "./confirm-modal";
 import { PyodideManager } from "./pyodide/pyodide-manager";
 import { runOlite } from "./pyodide-runner";
@@ -106,6 +107,9 @@ async function main() {
         galaxy_root: config.galaxy_root,
         openapi_url: `${config.galaxy_root}openapi.json`,
     });
+    // One id per tab, so the summary block upserts rather than accumulating.
+    const sessionId = (globalThis.crypto?.randomUUID?.() || `session-${Date.now()}`);
+    const startedAt = new Date().toISOString();
     const seed = { role: "system", content: incoming.specs.ai_prompt || PROMPT_DEFAULT };
     const convo: Array<{ role: string; content: string }> = [seed];
 
@@ -241,6 +245,14 @@ async function main() {
             convo.length = 0;
             convo.push(...(reply.messages || []));
             void session.save(convo);
+            // loom writes a session block into the notebook itself; the record then carries
+            // shell-written proof of the session even if the agent wrote nothing.
+            void writeSessionSummary(config.galaxy_root, credentials, config.history_id, {
+                id: sessionId,
+                startedAt,
+                endedAt: new Date().toISOString(),
+                orphanedActiveSteps: 0,
+            });
             resetBtn.classList.toggle("hidden", !session.enabled);
             const artifacts = reply.artifacts || [];
             if (artifacts.length) {
