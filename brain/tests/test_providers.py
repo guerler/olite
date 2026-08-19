@@ -328,3 +328,12 @@ def test_a_persistently_empty_endpoint_still_raises(monkeypatch):
     with pytest.raises(ProviderError):
         asyncio.run(llm.complete([{"role": "user", "content": "hi"}]))
     assert adapter.sent == 2
+
+
+def test_jetstream2_resolves_to_the_open_webui_proxy():
+    """Free for ACCESS accounts and processed at IU, so it suits runs on real Galaxy data."""
+    target = resolve({"ai_provider": "jetstream2", "ai_model": "llama-4-scout"})
+
+    assert target.base_url == "https://llm.jetstream-cloud.org/api"
+    assert get_adapter(target.api).url(target).endswith("/api/chat/completions")
+    assert target.context_window == 328_000

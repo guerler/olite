@@ -96,6 +96,19 @@ OPENROUTER = Provider(
     },
 )
 
+# Free for ACCESS accounts, hosted at IU; the Open WebUI proxy is the OpenAI-compatible path.
+# Model ids and windows read from GET /api/models rather than assumed.
+JETSTREAM2 = Provider(
+    id="jetstream2",
+    name="Jetstream2 LLM inference service",
+    base_url="https://llm.jetstream-cloud.org/api",
+    auth_env="JETSTREAM2_KEY",
+    models={
+        "llama-4-scout": Model("llama-4-scout", context_window=328_000),
+        "gpt-oss-120b": Model("gpt-oss-120b", context_window=131_072),
+    },
+)
+
 # llama.cpp and Ollama ignore the model name, so the window belongs to the server.
 LOCAL = Provider(
     id="local",
@@ -104,7 +117,7 @@ LOCAL = Provider(
     probe_window=True,
 )
 
-REGISTRY = {p.id: p for p in (GALAXY, GEMINI, DEEPSEEK, OPENROUTER, LOCAL)}
+REGISTRY = {p.id: p for p in (GALAXY, GEMINI, DEEPSEEK, OPENROUTER, JETSTREAM2, LOCAL)}
 
 
 @dataclass(frozen=True)
