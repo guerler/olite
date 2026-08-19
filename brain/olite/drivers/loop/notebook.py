@@ -41,7 +41,7 @@ TAIL_MAX_CHARS = 4000
 
 
 async def excerpt(g, history_id):
-    """loom: buildNotebookExcerptBlock(), reading the Galaxy page instead of a file."""
+    """loom: buildNotebookExcerptBlock() + buildGalaxyPageBindingBlock(), over a Page."""
     if not history_id:
         return ""
     try:
@@ -64,7 +64,15 @@ async def excerpt(g, history_id):
         elided = True
 
     note = "_(showing head + tail; middle elided)_\n\n" if elided else ""
-    return f"""## The record (current contents)
+    return f"""## Galaxy binding
+
+This session is bound to **history `{history_id}`** and its record page
+`{page.get('id')}` (slug `{slug_for_history(history_id)}`). That history is the one the
+user is looking at. **Pass `history_id="{history_id}"` when you run a tool or invoke a
+workflow** -- omit it and Galaxy puts the outputs in a new history the user never opened,
+where they will not find them.
+
+## The record (current contents)
 
 Page `{page.get('id')}` -- the durable record for this analysis. It accumulates over the
 project's lifetime: ad-hoc exploration notes, plan sections, executed steps, what the

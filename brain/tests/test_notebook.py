@@ -187,3 +187,15 @@ def test_an_unreachable_galaxy_does_not_break_the_turn():
             raise RuntimeError("network down")
 
     assert _excerpt(Broken()) == ""
+
+
+def test_the_excerpt_names_the_bound_history():
+    """loom's buildGalaxyPageBindingBlock tells the agent the history every turn; without it
+    the agent omits history_id and Galaxy puts outputs in a history the user never opened."""
+    page = {"id": "p1", "slug": notebook.slug_for_history(HISTORY), "content": "## Record\n\nx"}
+
+    text = _excerpt(FakeGalaxy([page]))
+
+    assert HISTORY in text
+    assert "bound to" in text
+    assert f'history_id="{HISTORY}"' in text
