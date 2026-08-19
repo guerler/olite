@@ -11,6 +11,7 @@ python evals/run.py plan-creation      # filter scenarios by substring
 python evals/run.py --model gemini     # filter models by substring
 python evals/run.py --json out.json    # write transcripts + chat text + failures, pass or fail
 python evals/run.py --delay 5          # extra pacing on top of the provider's own
+python evals/run.py --repeat 3         # run each scenario 3 times; n=1 hides variance
 ```
 
 **Pacing.** Each model resolves through the brain's provider registry, so the run is
@@ -86,6 +87,13 @@ approves anything should therefore find nothing on the record, and that is a pro
 worth grading rather than papering over.
 
 ## What this is not
+
+**Not a single-run verdict.** Behaviour varies run to run, and n=1 hides it — a scenario
+in this suite has already passed and failed on the same model within an hour. `--repeat N`
+runs each (scenario, model) tuple N times and lists any tuple whose runs disagreed under
+**Unstable**. Check that list before quoting a number: a cell that is not unanimous cannot
+honestly be reported as one verdict. loom's `findings.md` specifies this as "Phase 6" and
+has not built it yet.
 
 Not a correctness oracle. `mentionsOneOf` checks that a plan names a plausible tool
 for the assay, not that the analysis is right — loom leaves that to a judge layer and

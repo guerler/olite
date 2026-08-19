@@ -47,6 +47,8 @@ def main():
     ap.add_argument("--json", dest="json_out", help="write raw results here")
     ap.add_argument("--delay", type=float, default=0.0,
                     help="extra seconds between runs; the provider's own rate limit already applies")
+    ap.add_argument("--repeat", type=int, default=1, metavar="N",
+                    help="run each scenario N times; behaviour varies run to run, and n=1 hides it")
     args = ap.parse_args()
 
     with open(os.path.join(HERE, "models.json")) as f:
@@ -63,44 +65,51 @@ def main():
         print("\nNo scenarios matched.")
         return 1
 
-    print(f"\n{len(scenarios)} scenario(s) x {len(models)} model(s)\n")
+    repeat = max(1, args.repeat)
+    times = f" x {repeat} run(s)" if repeat > 1 else ""
+    print(f"\n{len(scenarios)} scenario(s) x {len(models)} model(s){times}\n")
     results = []
     for model in models:
         for scenario in scenarios:
-            if args.delay and results:
-                time.sleep(args.delay)
-            run = run_scenario(scenario, model)
-            if run.error:
-                failures, exercised = [], set()
-                verdict = "quota" if is_quota(run) else "ERROR"
-                note = run.error.replace("\n", " ")
-            else:
-                failures, exercised = evaluate(scenario, run)
-                verdict = "pass" if not failures else "FAIL"
-                note = "" if not failures else failures[0].detail
-            # Flushed per result: a full matrix runs for many minutes, and Python
-            print(f"  [{verdict:5s}] {model['id']:24s} {scenario['id']:34s} {note[:60]}", flush=True)
-            for f in failures[1:]:
-                print(f"          {f}")
-            results.append(
-                {
-                    "model": model["id"],
-                    "scenario": scenario["id"],
-                    "error": run.error,
-                    "statusCode": run.status_code,
-                    "dimensions": sorted(exercised),
-                    "failures": [
-                        {"assertion": f.assertion, "detail": f.detail, "dimension": f.dimension} for f in failures
-                    ],
-                    "toolsCalled": run.tools_called,
-                    # A pass is the artifact worth keeping, not just the verdict.
-                    "chatText": run.chat_text if run.messages else "",
-                    "messages": run.messages or [],
-                    "logs": run.logs or [],
-                }
-            )
+          for run_index in range(repeat):
+              if args.delay and results:
+                  time.sleep(args.delay)
+              run = run_scenario(scenario, model)
+              if run.error:
+                  failures, exercised = [], set()
+                  verdict = "quota" if is_quota(run) else "ERROR"
+                  note = run.error.replace("\n", " ")
+              else:
+                  failures, exercised = evaluate(scenario, run)
+                  verdict = "pass" if not failures else "FAIL"
+                  note = "" if not failures else failures[0].detail
+              # Flushed per result: a full matrix runs for many minutes, and Python
+              tag = f" #{run_index + 1}" if repeat > 1 else ""
+              print(f"  [{verdict:5s}] {model['id']:24s} {scenario['id']:34s}{tag} {note[:60]}", flush=True)
+              for f in failures[1:]:
+                  print(f"          {f}")
+              results.append(
+                  {
+                      "model": model["id"],
+                      "scenario": scenario["id"],
+                      "run": run_index + 1,
+                      "error": run.error,
+                      "statusCode": run.status_code,
+                      "dimensions": sorted(exercised),
+                      "failures": [
+                          {"assertion": f.assertion, "detail": f.detail, "dimension": f.dimension} for f in failures
+                      ],
+                      "toolsCalled": run.tools_called,
+                      # A pass is the artifact worth keeping, not just the verdict.
+                      "chatText": run.chat_text if run.messages else "",
+                      "messages": run.messages or [],
+                      "logs": run.logs or [],
+                  }
+              )
+
 
     print_leaderboard(results, models)
+    print_instability(results)
     if args.json_out:
         with open(args.json_out, "w") as f:
             json.dump(results, f, indent=2)
@@ -108,6 +117,28 @@ def main():
     # A quota-limited run is not a failure of the agent, so it must not fail the suite.
     graded = [r for r in results if not is_quota(r)]
     return 0 if all(not r["failures"] and not r["error"] for r in graded) else 1
+
+
+def outcome(row):
+    """One word per run, so repeated runs can be compared."""
+    if row["error"]:
+        return "quota" if is_quota(row) else "ERROR"
+    return "pass" if not row["failures"] else "FAIL"
+
+
+def print_instability(results):
+    """Name the tuples whose runs disagreed. A flaky cell is a finding, not noise."""
+    grouped = {}
+    for row in results:
+        grouped.setdefault((row["model"], row["scenario"]), []).append(outcome(row))
+    unstable = {k: v for k, v in grouped.items() if len(v) > 1 and len(set(v)) > 1}
+    if not unstable:
+        return
+    print("\nUnstable — the same scenario went both ways on repeated runs:")
+    for (model, scenario), outcomes in sorted(unstable.items()):
+        tally = ", ".join(f"{o}x{outcomes.count(o)}" for o in dict.fromkeys(outcomes))
+        print(f"  {model:24s} {scenario:34s} {tally}")
+    print("A cell that is not unanimous cannot be reported as a single verdict.")
 
 
 def print_leaderboard(results, models):
