@@ -47,6 +47,14 @@ const api = async (path) => {
     await page.goto(`${APP}?history_id=${HISTORY}`, { waitUntil: "domcontentloaded" });
     check("booted", await wait(() => /olite ready|Resumed this history/i.test(document.body.innerText), 300000));
 
+    // A restored conversation replays its plan cards, and they are clickable. Start clean or
+    // the driver approves a plan from a previous run.
+    if (await page.locator("#reset-btn:not(.hidden)").count()) {
+        await page.click("#reset-btn");
+        await page.waitForTimeout(1000);
+        check("started a clean conversation", !(await page.locator(".plan-draft-approve").count()));
+    }
+
     // Stage 1-2: ask for a plan, expect a draft card rather than execution.
     const asked = await say(
         `Invoke the workflow with id ${WORKFLOW} on dataset ${DATASET} in this history. ` +
@@ -110,11 +118,14 @@ const api = async (path) => {
         require("fs").writeFileSync(`${OUT}/live-record-bound.md`, content);
     }
 
+    // Only records touched during this run count; a leftover page from an earlier run
+    // otherwise satisfies the check and hides a failure.
     const olitePages = pages.filter((p) => (p.slug || "").startsWith("olite-"));
     let narrated = null;
     for (const p of olitePages) {
         const c = await read(p);
-        if (/invocation|workflow/i.test(c) && c.length > 200) narrated = { page: p, content: c };
+        const fresh = invoked && c.includes(invoked.id);
+        if (fresh && /invocation|workflow/i.test(c)) narrated = { page: p, content: c };
     }
     check("some record describes the work", !!narrated,
           narrated ? `${narrated.page.slug} (${narrated.content.length} chars)` : "none did");
