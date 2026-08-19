@@ -4,7 +4,7 @@ const env = {
     GALAXY_DATASET_ID: "",
     GALAXY_KEY: "",
     GALAXY_ROOT: "http://127.0.0.1:8080",
-    // Names a built-in provider (galaxy | gemini | deepseek | local). Setting it is
+    // Names a built-in provider (galaxy | gemini | deepseek | openrouter | local). Setting it is
     // enough; LLM_ROOT/LLM_PATH below are only for an endpoint the registry lacks.
     LLM_PROVIDER: "",
     LLM_ROOT: "",
@@ -46,6 +46,7 @@ const proxyGalaxy = () => ({
 const LLM_TARGETS: Record<string, { root: string; path: string }> = {
     gemini: { root: "https://generativelanguage.googleapis.com", path: "/v1beta/openai" },
     deepseek: { root: "https://api.deepseek.com", path: "/v1" },
+    openrouter: { root: "https://openrouter.ai", path: "/api/v1" },
     local: { root: "http://127.0.0.1:11434", path: "/v1" },
 };
 const llmTarget = LLM_TARGETS[env.LLM_PROVIDER] || { root: "http://127.0.0.1:11434", path: "/v1" };
