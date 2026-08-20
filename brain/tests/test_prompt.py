@@ -22,7 +22,7 @@ def test_every_ported_block_is_composed():
         "### Context and compaction",
         "## Verification before completion",
         "### What to check, by format",
-        "## Drafting a new plan",
+        "### Drafting a new plan",
         "## Parameter review",
         "## Chat formatting",
         "## The record",
@@ -335,7 +335,7 @@ def test_galaxy_guidance_is_gated_on_the_catalog():
     up = prompt.system_text(galaxy_ok=True)
     down = prompt.system_text(galaxy_ok=False)
 
-    for heading in ("### Galaxy terminology", "## Drafting a new plan",
+    for heading in ("### Galaxy terminology", "### Drafting a new plan",
                     "### Invoking a Galaxy workflow"):
         assert heading in up, heading
         assert heading not in down, f"{heading} should be withheld when Galaxy is unavailable"

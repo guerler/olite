@@ -86,29 +86,35 @@ yet, and a checkbox that ran ahead of the evidence is worse than an empty one.""
 # loom: buildOperatingDisciplineBlock(), "Confirm scope" verbatim; "Secrets" adapted.
 # loom: the "Drafting a new plan" section of buildGalaxyContextBlock, which loom emits only
 # when Galaxy is connected. Same gate here -- see GALAXY_UNAVAILABLE.
-DRAFTING_A_PLAN = """## Drafting a new plan
+DRAFTING_A_PLAN = """### Drafting a new plan
 
+When drafting a plan, **first** consult Galaxy
+resources before deciding what runs where:
 
-Consult Galaxy's own resources before deciding what the plan should run. **This informs
-the plan you write in the same turn; it does not replace it or postpone it.**
+1. Search the IWC workflow registry for matching workflows
+   (`search_iwc_workflows` / `recommend_iwc_workflows`). If a full match
+   exists, propose running the plan as a single Galaxy invocation
+   (mode: **galaxy**).
+2. Otherwise, draft step-by-step. Per step:
+   - Heavy compute (alignment, large variant calling, big assemblies,
+     long-running BLAST, etc.) -> check Galaxy tool availability
+     (`search_tools_by_name`); if installed, mark step Galaxy.
+   - **Gap-filling glue** between Galaxy steps (a small filter,
+     reformatter, joiner, column-trimmer, etc. that isn't in the
+     public tool panel) -> **prefer a user-defined tool** over an
+     inline script. Create it once with `create_user_tool` and run it
+     with `run_user_tool`. Keeps the analysis on Galaxy,
+     preserves provenance, stays reusable across histories. Default to
+     this whenever the glue is something a future user might want to
+     run again.
+3. Document routing in the plan section header and inline per-step:
+   `## Plan A: chrM Variant Calling [galaxy]`
+   `Step 3: BWA alignment (Galaxy: bwa-mem2/2.2.1)`
+   `Step 4: VCF filter (Galaxy UDT: vcf_min_depth)`
 
-1. **Prefer a curated workflow.** If the IWC registry has a full match for the request
-   (`search_iwc_workflows`, or `recommend_iwc_workflows` when the match is not obvious),
-   propose running it as a single workflow step rather than reassembling it by hand -- a
-   curated workflow is better tested and better provenanced. Say so in the plan.
-2. **Otherwise draft step by step.** Per step:
-   - Real compute (alignment, variant calling, assembly, long searches) -- check the tool
-     is installed with `search_tools_by_name` before you put it in the plan.
-   - **Glue between steps** -- a small filter, reformatter, joiner or column-trimmer that
-     is not in the tool panel -- **prefer a user-defined tool** over inline Python. Create
-     it once with `create_user_tool` and run it with `run_user_tool`: it keeps the work on
-     Galaxy, preserves provenance, and stays reusable across histories.
-   - Name the tool inline in the step so the user can see what will run:
-     `Step 3: BWA alignment (bwa-mem2/2.2.1)`, `Step 4: VCF filter (user tool:
-     vcf_min_depth)`.
-3. **When the user asks to pick up earlier work**, read the bound history first
-   (`get_history_contents`) so the proposal builds on what is actually there rather than
-   on what the request implies. This is for resuming, not for every new plan."""
+**When the user asks to pick up earlier work**, read the bound history first
+(`get_history_contents`) so the proposal builds on what is actually there. This is for
+resuming, not for every new plan."""
 
 
 # loom: buildGalaxyContextBlock's NOT CONNECTED variant, shell-disabled branch. loom keys on
@@ -515,10 +521,10 @@ BLOCKS = [
     _no_local_shell,
     _galaxy_unavailable,
     _galaxy_terminology,
+    _drafting_a_plan,
     _getting_data_in,
     _invoking_workflow,
     _executing_a_step,
-    _drafting_a_plan,
     _operating_discipline,
     _verification,
     _plan_convention,
