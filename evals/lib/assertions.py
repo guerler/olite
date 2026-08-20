@@ -36,7 +36,30 @@ def evaluate(scenario, run):
     _chat_text(a.get("chatText"), run, failures, exercised)
     _plan(a.get("plan"), run, failures, exercised)
     _behavior(a.get("behavior"), run, failures, exercised)
+    _events(a.get("events"), run, failures, exercised)
     return failures, exercised
+
+
+def _events(spec, run, failures, exercised):
+    """loom's `events` family: proof the turn ran, or proof it was refused before running.
+
+    Without this a scenario can only infer that the agent executed, from some other
+    assertion happening to pass -- which is how a turn that never ran scores full marks.
+    """
+    if not spec:
+        return
+    exercised.add("behavior")
+    seen = run.events
+    for name in spec.get("mustInclude") or []:
+        if name not in seen:
+            failures.append(
+                Failure("events.mustInclude", f"no `{name}` event; the turn did not get that far", "behavior")
+            )
+    for name in spec.get("mustNotInclude") or []:
+        if name in seen:
+            failures.append(
+                Failure("events.mustNotInclude", f"`{name}` fired, which this scenario forbids", "behavior")
+            )
 
 
 def _messages(spec, run, failures, exercised):

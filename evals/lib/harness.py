@@ -64,10 +64,15 @@ class StubGalaxy:
 
 
 class RunResult:
-    def __init__(self, messages, logs, tools_called, error=None, status_code=None):
+    def __init__(self, messages, logs, tools_called, error=None, status_code=None, events=None):
         self.messages = messages
         self.logs = logs
         self.tools_called = tools_called
+        # Every event the brain emitted, plus turn boundaries synthesised by the harness.
+        # loom's pi emits agent_start/turn_start/turn_end itself; olite's brain emits a
+        # smaller vocabulary, so the runner records the boundaries it already knows about
+        # rather than the product growing events to satisfy a test.
+        self.events = events or []
         self.error = error
         # The provider's HTTP status, preserved so grading never sniffs the message.
         self.status_code = status_code
@@ -135,16 +140,23 @@ async def _run(scenario, model):
     tools_called = []
     messages = transcripts
     logs = []
+    events = []
     for turn in scenario["inputs"]:
         messages = [*messages, {"role": "user", "content": turn}]
-        result = await driver.run(messages, lambda ev: _note(ev, tools_called))
+        events.append("turn_start")
+        result = await driver.run(messages, lambda ev: _note(ev, tools_called, events))
         messages = result.get("messages") or messages
         logs.extend(result.get("logs") or [])
-    return RunResult(messages, logs, tools_called)
+        # Only after run() returns: a turn that dies mid-flight must not look complete.
+        events.append("turn_end")
+    return RunResult(messages, logs, tools_called, events=events)
 
 
-def _note(event, sink):
-    if event.get("type") == "tool_start" and event.get("name"):
+def _note(event, sink, events=None):
+    kind = event.get("type")
+    if events is not None and kind:
+        events.append(kind)
+    if kind == "tool_start" and event.get("name"):
         sink.append(event["name"])
 
 

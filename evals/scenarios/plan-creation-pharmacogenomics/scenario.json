@@ -8,6 +8,12 @@
   ],
   "timeoutMs": 420000,
   "assertions": {
+    "events": {
+      "mustInclude": [
+        "turn_start",
+        "turn_end"
+      ]
+    },
     "messages": {
       "repliesInChat": true
     },
