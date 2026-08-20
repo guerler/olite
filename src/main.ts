@@ -3,6 +3,7 @@ import "./orbit/styles.css";
 import { ChatPanel } from "./orbit/chat/chat-panel";
 import { applyOrbitTheme } from "./orbit/theme";
 import { parseIncoming } from "./incoming";
+import { catalogRefusalMessage, galaxyCanRun } from "./catalog-gate";
 import { buildConfig } from "./config";
 import { describeError, lastLine, renderMessages, replayMessages, toolStatus } from "./transcript";
 import { SessionMemory, galaxyUserId, indexedDbStore } from "./session";
@@ -166,6 +167,8 @@ async function main() {
     });
 
     let busy = false;
+    // Last catalog status the brain reported; undefined until the first turn returns.
+    let latestCatalog: import("./catalog-gate").CatalogStatus | undefined;
     async function submit() {
         const text = input.value.trim();
         if (!text || busy || !ready) {
@@ -216,6 +219,7 @@ async function main() {
             console.groupEnd();
             // Surface a broken Galaxy catalog once; it is otherwise a silent dead end.
             const cat = reply.diagnostics && reply.diagnostics.catalog;
+            latestCatalog = cat || latestCatalog;
             if (cat && !cat.loaded) {
                 chat.addErrorMessage(`Galaxy catalog did not load (root=${config.galaxy_root}): ${cat.error}`);
             }
@@ -343,6 +347,12 @@ async function main() {
     messagesEl.addEventListener("plan-draft-action", (e) => {
         const { action, body } = (e as CustomEvent<{ action: string; body: string }>).detail;
         if (action === "approve") {
+            // loom's init gate refuses /execute when Galaxy cannot run the plan; Approve is
+            // the equivalent control here, so it refuses before the turn is ever sent.
+            if (!galaxyCanRun(latestCatalog)) {
+                chat.addErrorMessage(catalogRefusalMessage(latestCatalog));
+                return;
+            }
             input.value = "I approve the plan above. Show the full parameter table for review before executing.";
             void submit();
         } else if (action === "reject") {
