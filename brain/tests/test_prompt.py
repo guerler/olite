@@ -18,7 +18,11 @@ def test_every_ported_block_is_composed():
         "### Getting data into a Galaxy history",
         "### Invoking a Galaxy workflow",
         "## Operating discipline",
+        "### Reproducing long text",
+        "### Context and compaction",
         "## Verification before completion",
+        "### What to check, by format",
+        "### Drafting a new plan",
         "## Parameter review",
         "## Chat formatting",
         "## The record",
@@ -284,3 +288,43 @@ def test_the_agent_may_not_claim_a_record_write_it_did_not_make():
 
     assert "do not claim the record was updated unless `update_page` returned" in text
     assert "binds the record; it does not write to it" in text
+
+
+def test_the_active_model_block_names_the_resolved_target():
+    """loom states model + provider so the agent cannot answer from training priors."""
+    text = prompt.system_text(model="gpt-oss-120b", provider="jetstream2")
+
+    assert "## Active model" in text
+    assert "**gpt-oss-120b**" in text
+    assert "**jetstream2**" in text
+
+
+def test_the_active_model_block_is_omitted_when_no_model_is_known():
+    """Better silent than asserting an identity the shell never supplied."""
+    assert "## Active model" not in prompt.system_text()
+    assert "## Active model" not in prompt.system_text(provider="jetstream2")
+
+
+def test_drafting_consults_iwc_before_drafting_step_by_step():
+    """loom's rule: a curated workflow beats a hand-assembled chain."""
+    text = prompt.system_text()
+
+    assert "search_iwc_workflows" in text
+    assert "get_history_contents" in text, "read the bound history before proposing"
+    assert "create_user_tool" in text, "glue belongs in a user-defined tool"
+
+
+def test_compaction_is_described_as_automatic_and_unclaimable():
+    """The claim-hygiene rule; olite compacts on its own, with no tool to call."""
+    text = prompt.system_text()
+
+    assert "cannot compact your own context" in text
+    assert "Never claim you" in text
+
+
+def test_verification_keeps_the_per_format_checks():
+    """Orbit names the checks per artifact type; compressing them lost real guidance."""
+    text = prompt.system_text()
+
+    for fmt in ("BAM/CRAM", "VCF/BCF", "FASTQ/FASTA"):
+        assert fmt in text, f"missing verification guidance for {fmt}"

@@ -20,7 +20,16 @@ async def run(config, inputs, on_event=None):
     skills = SkillRegistry().load_packaged()
     driver = LoopDriver(substrate, processes, skills, confirm.from_js())
     # The shell seeds the identity prompt; the brain appends discipline and the router.
-    context = "\n\n".join(t for t in (prompt.system_text(), skills.router_text()) if t)
+    # Name the resolved target, not the config hint -- the manifest can supply the model.
+    target = substrate.llm.target
+    context = "\n\n".join(
+        t
+        for t in (
+            prompt.system_text(model=target.model.id, provider=target.provider.id),
+            skills.router_text(),
+        )
+        if t
+    )
     transcripts = _inject_context(inputs["transcripts"], context)
     # loom keeps the record out of the cached prefix; it changes every time the agent writes.
     transcripts = _inject_record(

@@ -26,6 +26,13 @@ const api = async (path) => {
         if (!v) { console.log(`FAIL  missing env ${k}`); process.exit(1); }
     }
     const invocationsBefore = (await api(`api/invocations?workflow_id=${WORKFLOW}`)) || [];
+    // The record accumulates across sessions, so ids written by earlier runs are legitimate.
+    // Baseline it now and only validate what this run adds.
+    const priorPage = (await api("api/pages?limit=500")) || [];
+    const priorBound = priorPage.find((p) => p.slug === `olite-${HISTORY}`);
+    const recordBefore = priorBound
+        ? ((await api(`api/pages/${priorBound.id}`)) || {}).content || ""
+        : "";
 
     const browser = await chromium.launch();
     const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
@@ -148,7 +155,15 @@ const api = async (path) => {
         // Galaxy ids are 16 lowercase hex chars; anything of that shape we cannot account
         // for was either invented or copied from an unrelated object.
         const cited = narrated.content.match(/\b[0-9a-f]{16}\b/g) || [];
-        const unknown = [...new Set(cited.filter((id) => !known.has(id)))];
+        const unknown = [...new Set(cited.filter((id) => !known.has(id) && !recordBefore.includes(id)))];
+        // update_page replaces the page, so a merge failure silently drops earlier
+        // sessions. Every id the record carried before this run must survive it.
+        const priorIds = [...new Set(recordBefore.match(/\b[0-9a-f]{16}\b/g) || [])]
+            .filter((id) => id !== (bound && bound.id));
+        const dropped = priorIds.filter((id) => !narrated.content.includes(id));
+        check("earlier entries survived the write", dropped.length === 0,
+              priorIds.length ? `${priorIds.length - dropped.length}/${priorIds.length} kept` : "nothing prior");
+
         check("every id in the record belongs to this run", unknown.length === 0,
               unknown.length ? `unaccounted: ${unknown.join(", ")}` : `${cited.length} id(s) checked`);
     }
