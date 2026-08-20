@@ -299,9 +299,12 @@
         "condition": "inherits buildGalaxyContextBlock: live connection, not local mode",
         "fingerprint": "b1bf9fe62b11658f"
       },
-      "olite": null,
-      "label": "DIVERGED",
-      "note": "POSITION: loom emits this inside the Galaxy context block, gated on a live connection. olite carries it inside PLAN_CONVENTION, ungated. Ported 2026-08-20; the local-routing branch is dropped as inapplicable."
+      "olite": {
+        "file": "brain/olite/prompt.py",
+        "symbol": "DRAFTING_A_PLAN"
+      },
+      "label": "PORTED",
+      "note": "Own block since 2026-08-20, gated on the tool catalog exactly as loom gates it on a live connection. Previously DIVERGED: carried inside PLAN_CONVENTION and ungated, which fired it in contexts loom never does. The local-routing branch stays dropped."
     },
     {
       "id": "prompt.galaxy-context.resuming",
@@ -344,6 +347,23 @@
       "olite": null,
       "label": "MISSING",
       "note": "olite has no not-connected variant; the analogous state is a failed OpenAPI catalog load."
+    },
+    {
+      "id": "prompt.buildGalaxyContextBlock.not-connected",
+      "kind": "prompt-branch",
+      "loom": {
+        "file": "extensions/loom/context.ts",
+        "symbol": "buildGalaxyContextBlock",
+        "branch": "NOT CONNECTED (shell-disabled branch)",
+        "condition": "emitted instead of the Galaxy guidance when credentials are absent",
+        "fingerprint": "af790aa68418bf89"
+      },
+      "olite": {
+        "file": "brain/olite/prompt.py",
+        "symbol": "GALAXY_UNAVAILABLE"
+      },
+      "label": "PORTED",
+      "note": "loom keys on missing GALAXY_URL/GALAXY_API_KEY; olite is served by Galaxy, so the equivalent condition is the OpenAPI tool catalog failing to load."
     },
     {
       "id": "prompt.GALAXY_PAGE_MARKDOWN_GUIDANCE",

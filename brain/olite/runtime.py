@@ -25,7 +25,13 @@ async def run(config, inputs, on_event=None):
     context = "\n\n".join(
         t
         for t in (
-            prompt.system_text(model=target.model.id, provider=target.provider.id),
+            prompt.system_text(
+                model=target.model.id,
+                provider=target.provider.id,
+                # loom gates its Galaxy guidance on a live connection; olite's equivalent
+                # is the tool catalog having loaded.
+                galaxy_ok=bool(substrate.catalog.status().get("op_count")),
+            ),
             skills.router_text(),
         )
         if t

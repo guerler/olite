@@ -84,6 +84,42 @@ Do not verify or check off a step in the turn that submitted it -- it is not don
 yet, and a checkbox that ran ahead of the evidence is worse than an empty one."""
 
 # loom: buildOperatingDisciplineBlock(), "Confirm scope" verbatim; "Secrets" adapted.
+# loom: the "Drafting a new plan" section of buildGalaxyContextBlock, which loom emits only
+# when Galaxy is connected. Same gate here -- see GALAXY_UNAVAILABLE.
+DRAFTING_A_PLAN = """## Drafting a new plan
+
+
+Consult Galaxy's own resources before deciding what the plan should run. **This informs
+the plan you write in the same turn; it does not replace it or postpone it.**
+
+1. **Prefer a curated workflow.** If the IWC registry has a full match for the request
+   (`search_iwc_workflows`, or `recommend_iwc_workflows` when the match is not obvious),
+   propose running it as a single workflow step rather than reassembling it by hand -- a
+   curated workflow is better tested and better provenanced. Say so in the plan.
+2. **Otherwise draft step by step.** Per step:
+   - Real compute (alignment, variant calling, assembly, long searches) -- check the tool
+     is installed with `search_tools_by_name` before you put it in the plan.
+   - **Glue between steps** -- a small filter, reformatter, joiner or column-trimmer that
+     is not in the tool panel -- **prefer a user-defined tool** over inline Python. Create
+     it once with `create_user_tool` and run it with `run_user_tool`: it keeps the work on
+     Galaxy, preserves provenance, and stays reusable across histories.
+   - Name the tool inline in the step so the user can see what will run:
+     `Step 3: BWA alignment (bwa-mem2/2.2.1)`, `Step 4: VCF filter (user tool:
+     vcf_min_depth)`.
+3. **When the user asks to pick up earlier work**, read the bound history first
+   (`get_history_contents`) so the proposal builds on what is actually there rather than
+   on what the request implies. This is for resuming, not for every new plan."""
+
+
+# loom: buildGalaxyContextBlock's NOT CONNECTED variant, shell-disabled branch. loom keys on
+# missing credentials; olite is served by Galaxy and keys on the tool catalog failing to load.
+GALAXY_UNAVAILABLE = """## Galaxy: NOT AVAILABLE
+
+The Galaxy tool catalog did not load, so no Galaxy tool or workflow can run in this
+session. Nothing you propose can execute until it is available. Say so plainly and ask
+the user to reload the page rather than proposing analysis steps you cannot carry out."""
+
+
 OPERATING_DISCIPLINE = """## Operating discipline
 
 ### Confirm scope before substantive work
@@ -192,29 +228,6 @@ A plan is drafted in the conversation and, once approved, written into the recor
 summaries, or ad-hoc edits -- answer those directly. A plan is for multi-step
 pipeline orchestration the user explicitly wants driven (e.g. "draft a plan for
 variant calling on this data").
-
-### Drafting a new plan
-
-Consult Galaxy's own resources before deciding what the plan should run. **This informs
-the plan you write in the same turn; it does not replace it or postpone it.**
-
-1. **Prefer a curated workflow.** If the IWC registry has a full match for the request
-   (`search_iwc_workflows`, or `recommend_iwc_workflows` when the match is not obvious),
-   propose running it as a single workflow step rather than reassembling it by hand -- a
-   curated workflow is better tested and better provenanced. Say so in the plan.
-2. **Otherwise draft step by step.** Per step:
-   - Real compute (alignment, variant calling, assembly, long searches) -- check the tool
-     is installed with `search_tools_by_name` before you put it in the plan.
-   - **Glue between steps** -- a small filter, reformatter, joiner or column-trimmer that
-     is not in the tool panel -- **prefer a user-defined tool** over inline Python. Create
-     it once with `create_user_tool` and run it with `run_user_tool`: it keeps the work on
-     Galaxy, preserves provenance, and stays reusable across histories.
-   - Name the tool inline in the step so the user can see what will run:
-     `Step 3: BWA alignment (bwa-mem2/2.2.1)`, `Step 4: VCF filter (user tool:
-     vcf_min_depth)`.
-3. **When the user asks to pick up earlier work**, read the bound history first
-   (`get_history_contents`) so the proposal builds on what is actually there rather than
-   on what the request implies. This is for resuming, not for every new plan.
 
 ### Plan lifecycle -- the four-stage approval gate
 
@@ -434,20 +447,29 @@ def _no_local_shell(ctx):
     return NO_LOCAL_SHELL
 
 
+def _galaxy_unavailable(ctx):
+    # loom: the NOT CONNECTED variant, emitted *instead of* the Galaxy guidance below.
+    return "" if ctx.get("galaxy_ok", True) else GALAXY_UNAVAILABLE
+
+
 def _galaxy_terminology(ctx):
-    return GALAXY_TERMINOLOGY
+    return GALAXY_TERMINOLOGY if ctx.get("galaxy_ok", True) else ""
 
 
 def _getting_data_in(ctx):
-    return GETTING_DATA_IN
+    return GETTING_DATA_IN if ctx.get("galaxy_ok", True) else ""
 
 
 def _invoking_workflow(ctx):
-    return INVOKING_WORKFLOW
+    return INVOKING_WORKFLOW if ctx.get("galaxy_ok", True) else ""
 
 
 def _executing_a_step(ctx):
-    return EXECUTING_A_STEP
+    return EXECUTING_A_STEP if ctx.get("galaxy_ok", True) else ""
+
+
+def _drafting_a_plan(ctx):
+    return DRAFTING_A_PLAN if ctx.get("galaxy_ok", True) else ""
 
 
 def _operating_discipline(ctx):
@@ -491,10 +513,12 @@ def _current_date(ctx):
 BLOCKS = [
     _active_model,
     _no_local_shell,
+    _galaxy_unavailable,
     _galaxy_terminology,
     _getting_data_in,
     _invoking_workflow,
     _executing_a_step,
+    _drafting_a_plan,
     _operating_discipline,
     _verification,
     _plan_convention,
@@ -506,7 +530,7 @@ BLOCKS = [
 ]
 
 
-def system_text(today=None, model=None, provider=None):
+def system_text(today=None, model=None, provider=None, galaxy_ok=True):
     """The block text appended to the shell-seeded identity prompt."""
-    ctx = {"today": today, "model": model, "provider": provider}
+    ctx = {"today": today, "model": model, "provider": provider, "galaxy_ok": galaxy_ok}
     return "\n\n".join(b for b in (block(ctx) for block in BLOCKS) if b)

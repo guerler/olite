@@ -22,7 +22,7 @@ def test_every_ported_block_is_composed():
         "### Context and compaction",
         "## Verification before completion",
         "### What to check, by format",
-        "### Drafting a new plan",
+        "## Drafting a new plan",
         "## Parameter review",
         "## Chat formatting",
         "## The record",
@@ -328,3 +328,32 @@ def test_verification_keeps_the_per_format_checks():
 
     for fmt in ("BAM/CRAM", "VCF/BCF", "FASTQ/FASTA"):
         assert fmt in text, f"missing verification guidance for {fmt}"
+
+
+def test_galaxy_guidance_is_gated_on_the_catalog():
+    """loom gates its Galaxy block on a live connection; olite's gate is the catalog."""
+    up = prompt.system_text(galaxy_ok=True)
+    down = prompt.system_text(galaxy_ok=False)
+
+    for heading in ("### Galaxy terminology", "## Drafting a new plan",
+                    "### Invoking a Galaxy workflow"):
+        assert heading in up, heading
+        assert heading not in down, f"{heading} should be withheld when Galaxy is unavailable"
+
+
+def test_the_unavailable_notice_replaces_the_guidance_rather_than_leaving_a_hole():
+    """loom emits a NOT CONNECTED variant instead of simply dropping the block."""
+    down = prompt.system_text(galaxy_ok=False)
+
+    assert "## Galaxy: NOT AVAILABLE" in down
+    assert "reload" in down
+    assert "## Galaxy: NOT AVAILABLE" not in prompt.system_text(galaxy_ok=True)
+
+
+def test_the_discipline_blocks_are_not_gated():
+    """Only the Galaxy-derived sections move; loom's unconditional blocks stay unconditional."""
+    down = prompt.system_text(galaxy_ok=False)
+
+    for heading in ("## Operating discipline", "## Verification before completion",
+                    "## Plans and the approval gate", "## The record"):
+        assert heading in down, heading

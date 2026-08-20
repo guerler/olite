@@ -57,16 +57,25 @@ SECTIONS = [
      "Local upload replaced by URL fetch; olite cannot reach the user's disk."),
     ("Invoking a Galaxy workflow", "INVOKING_WORKFLOW", "PORTED", ""),
     ("Executing a Galaxy step", "EXECUTING_A_STEP", "PORTED", ""),
-    ("Drafting a new plan", None, "DIVERGED",
-     "POSITION: loom emits this inside the Galaxy context block, gated on a live connection. "
-     "olite carries it inside PLAN_CONVENTION, ungated. Ported 2026-08-20; the local-routing "
-     "branch is dropped as inapplicable."),
+    ("Drafting a new plan", "DRAFTING_A_PLAN", "PORTED",
+     "Own block since 2026-08-20, gated on the tool catalog exactly as loom gates it on a "
+     "live connection. Previously DIVERGED: carried inside PLAN_CONVENTION and ungated, "
+     "which fired it in contexts loom never does. The local-routing branch stays dropped."),
     ("Resuming existing Galaxy work", None, "REPLACED",
      "Page selection is inapplicable -- olite binds one record per history by construction. "
      "Only the read-the-history step is ported, kept resume-conditional as loom has it."),
     ("Uploading local data", None, "NA", "No access to the user's filesystem."),
     ("If a Galaxy tool reports it's not connected", None, "MISSING",
      "olite has no not-connected variant; the analogous state is a failed OpenAPI catalog load."),
+]
+
+# Branches of a loom builder that are not `###` sections and so cannot be anchored by heading.
+BRANCHES = [
+    ("buildGalaxyContextBlock", "NOT CONNECTED (shell-disabled branch)",
+     "emitted instead of the Galaxy guidance when credentials are absent",
+     "GALAXY_UNAVAILABLE", "PORTED",
+     "loom keys on missing GALAXY_URL/GALAXY_API_KEY; olite is served by Galaxy, so the "
+     "equivalent condition is the OpenAPI tool catalog failing to load."),
 ]
 
 CONSTS = [
@@ -112,6 +121,22 @@ def main():
                      "fingerprint": extract.fingerprint(sec)},
             "olite": ({"file": "brain/olite/prompt.py", "symbol": olite_symbol}
                       if olite_symbol else None),
+            "label": label,
+            "note": note,
+        })
+
+    for symbol, branch, condition, olite_symbol, label, note in BRANCHES:
+        src = extract.ts_symbol(loom_ctx, symbol)
+        if src is None:
+            raise SystemExit(f"loom symbol not found: {symbol}")
+        if extract.py_symbol(olite_prompt, olite_symbol) is None:
+            raise SystemExit(f"olite symbol not found: {olite_symbol}")
+        rows.append({
+            "id": f"prompt.{symbol}.not-connected",
+            "kind": "prompt-branch",
+            "loom": {"file": CTX, "symbol": symbol, "branch": branch,
+                     "condition": condition, "fingerprint": extract.fingerprint(src)},
+            "olite": {"file": "brain/olite/prompt.py", "symbol": olite_symbol},
             "label": label,
             "note": note,
         })

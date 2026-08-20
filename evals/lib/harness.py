@@ -122,7 +122,12 @@ async def _run(scenario, model):
     skills = SkillRegistry().load_packaged()
     driver = LoopDriver(substrate, processes, skills)
 
-    context = "\n\n".join(t for t in (prompt.system_text(), skills.router_text()) if t)
+    # StubGalaxy answers tool calls, so Galaxy is available to the agent here even though
+    # the catalog is not initialised. Passed explicitly: production derives this from the
+    # catalog in runtime.py, and the two assemblies must not drift apart silently.
+    context = "\n\n".join(
+        t for t in (prompt.system_text(galaxy_ok=True), skills.router_text()) if t
+    )
     transcripts = _inject_context(
         [{"role": "system", "content": scenario.get("systemPrompt", "You are olite.")}], context
     )
