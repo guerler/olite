@@ -195,17 +195,14 @@ variant calling on this data").
 
 ### Drafting a new plan
 
-Before deciding what the plan does, look at what already exists:
+Consult Galaxy's own resources before deciding what the plan should run. **This informs
+the plan you write in the same turn; it does not replace it or postpone it.**
 
-1. **Read the bound history first.** `get_history_contents` tells you what data is
-   already there and what has already been run. Propose analysis against what the user
-   actually has, not against what the request implies they have.
-2. **Search the IWC registry for a matching workflow** (`search_iwc_workflows`, or
-   `recommend_iwc_workflows` when the match is not obvious). **If a full match exists,
-   propose the plan as a single workflow invocation** rather than a chain of individual
-   steps -- a curated workflow is better tested and better provenanced than a plan you
-   assemble by hand.
-3. **Otherwise draft step by step.** Per step:
+1. **Prefer a curated workflow.** If the IWC registry has a full match for the request
+   (`search_iwc_workflows`, or `recommend_iwc_workflows` when the match is not obvious),
+   propose running it as a single workflow step rather than reassembling it by hand -- a
+   curated workflow is better tested and better provenanced. Say so in the plan.
+2. **Otherwise draft step by step.** Per step:
    - Real compute (alignment, variant calling, assembly, long searches) -- check the tool
      is installed with `search_tools_by_name` before you put it in the plan.
    - **Glue between steps** -- a small filter, reformatter, joiner or column-trimmer that
@@ -215,6 +212,9 @@ Before deciding what the plan does, look at what already exists:
    - Name the tool inline in the step so the user can see what will run:
      `Step 3: BWA alignment (bwa-mem2/2.2.1)`, `Step 4: VCF filter (user tool:
      vcf_min_depth)`.
+3. **When the user asks to pick up earlier work**, read the bound history first
+   (`get_history_contents`) so the proposal builds on what is actually there rather than
+   on what the request implies. This is for resuming, not for every new plan.
 
 ### Plan lifecycle -- the four-stage approval gate
 
@@ -423,24 +423,90 @@ You are **{model}**{via}. That is your identity for this session: state it
 accurately when asked, and do not claim to be a different model or provider."""
 
 
+# Composed the way loom composes: each entry is a function of the session context that
+# may return "" to withhold itself. loom gates nine of its sixteen blocks this way; a flat
+# list of constants cannot express that, which is how the gating went unported.
+# Every condition below traces to a loom guard -- see seams/registry.json.
+
+
+def _no_local_shell(ctx):
+    # loom: emitted only when the local shell is disabled. Permanently true here.
+    return NO_LOCAL_SHELL
+
+
+def _galaxy_terminology(ctx):
+    return GALAXY_TERMINOLOGY
+
+
+def _getting_data_in(ctx):
+    return GETTING_DATA_IN
+
+
+def _invoking_workflow(ctx):
+    return INVOKING_WORKFLOW
+
+
+def _executing_a_step(ctx):
+    return EXECUTING_A_STEP
+
+
+def _operating_discipline(ctx):
+    return OPERATING_DISCIPLINE
+
+
+def _verification(ctx):
+    return VERIFICATION
+
+
+def _plan_convention(ctx):
+    return PLAN_CONVENTION
+
+
+def _parameter_review(ctx):
+    return PARAMETER_REVIEW
+
+
+def _chat_formatting(ctx):
+    return CHAT_FORMATTING
+
+
+def _record_writes(ctx):
+    return RECORD_WRITES
+
+
+def _galaxy_page_markdown(ctx):
+    return GALAXY_PAGE_MARKDOWN
+
+
+def _active_model(ctx):
+    # loom: `if (!active) return ""`.
+    return active_model_block(ctx.get("model"), ctx.get("provider"))
+
+
+def _current_date(ctx):
+    return current_date_block(ctx.get("today"))
+
+
 # Order follows loom's composition: runtime, then Galaxy, then discipline.
 BLOCKS = [
-    NO_LOCAL_SHELL,
-    GALAXY_TERMINOLOGY,
-    GETTING_DATA_IN,
-    INVOKING_WORKFLOW,
-    EXECUTING_A_STEP,
-    OPERATING_DISCIPLINE,
-    VERIFICATION,
-    PLAN_CONVENTION,
-    PARAMETER_REVIEW,
-    CHAT_FORMATTING,
-    RECORD_WRITES,
-    GALAXY_PAGE_MARKDOWN,
+    _active_model,
+    _no_local_shell,
+    _galaxy_terminology,
+    _getting_data_in,
+    _invoking_workflow,
+    _executing_a_step,
+    _operating_discipline,
+    _verification,
+    _plan_convention,
+    _parameter_review,
+    _chat_formatting,
+    _record_writes,
+    _galaxy_page_markdown,
+    _current_date,
 ]
 
 
 def system_text(today=None, model=None, provider=None):
     """The block text appended to the shell-seeded identity prompt."""
-    blocks = [active_model_block(model, provider), *BLOCKS, current_date_block(today)]
-    return "\n\n".join(b for b in blocks if b)
+    ctx = {"today": today, "model": model, "provider": provider}
+    return "\n\n".join(b for b in (block(ctx) for block in BLOCKS) if b)
