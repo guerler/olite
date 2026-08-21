@@ -43,7 +43,7 @@ def check_layers(data):
         return out
 
     scen = (data.get("eval_scenarios") or {}).get("fingerprints") or {}
-    if scen:
+    if scen and LOOM.exists():
         try:
             now = layers.loom_scenarios(LOOM)
         except OSError:
@@ -96,9 +96,16 @@ def check_layers(data):
 def main():
     registry = json.loads((ROOT / "seams/registry.json").read_text())["seams"]
     problems = []
+    # CI has no loom checkout. The upstream-drift rows need one; everything that compares
+    # olite against state already recorded in the registry does not, and those are the
+    # checks that catch *our* mistakes rather than Orbit's movement.
+    have_loom = LOOM.exists()
+    if not have_loom:
+        print(f"note: no loom at {LOOM} — upstream drift not checked; "
+              f"orphan, skills and tool-surface checks still run\n")
 
     for row in registry:
-        loom_meta = row.get("loom")
+        loom_meta = row.get("loom") if have_loom else None
         if loom_meta:
             path = LOOM / loom_meta["file"]
             if not path.exists():
