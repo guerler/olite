@@ -112,11 +112,12 @@ what you can. No separate server or container is needed.
 
 ## Built on Orbit
 
-olite is a browser-based sibling of **Orbit**, the AI co-scientist for Galaxy. Orbit is the
-original and the reference: the plan-and-approve workflow, the parameter review, the analysis
-record, and the skills olite draws on were all designed and built there. olite deliberately
-follows Orbit's behaviour, and where the two differ it is because a browser cannot do
-something a server-side tool can — not because a different design was preferred.
+olite is a browser-native AI research assistant for Galaxy. Its agent behavior and
+interaction model are closely aligned with Orbit, the original Galaxy AI co-scientist and the
+reference implementation used for olite's parity evaluation. Several core concepts—including
+plan-and-approve, parameter review, the analysis record, and skills—were adopted directly from
+Orbit. olite reimplements these concepts for a browser-native runtime integrated with Galaxy,
+with differences arising primarily from the capabilities and constraints of that environment.
 
 Orbit runs as a Galaxy Interactive Tool, with a container per user and access to a shell.
 Choose Orbit when you need that; olite exists for cases where no per-user container is
