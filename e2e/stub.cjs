@@ -86,6 +86,16 @@ const server = http.createServer(async (req, res) => {
             await new Promise((r) => setTimeout(r, 60000));
             return json(res, 200, message("too late"));
         }
+        if (script === "plan") {
+            // A plan card, so the driver has an Approve button to click.
+            return json(res, 200, message(
+                "```plan\n## Plan A: Stub Plan [galaxy]\n\n" +
+                "Draft used only to render an approvable card.\n\n### Steps\n\n" +
+                "- [ ] 1. **Concatenate the inputs** -- join the two datasets\n" +
+                "  - Routing: galaxy\n  - Tool: cat\n" +
+                "  - Verification: confirm the output exists and is non-empty\n```",
+            ));
+        }
         if (script === "compact") {
             return json(res, 200, message("ok"));
         }

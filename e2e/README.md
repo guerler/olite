@@ -38,6 +38,7 @@ from, and never shown as a traceback.
 
 ```bash
 curl "http://127.0.0.1:8099/__script?name=ratelimit" && node e2e/ratelimit-drive.cjs
+node e2e/catalog-refusal-drive.cjs                    # approve is refused with no catalog
 ```
 
 `stub.cjs` scripts itself through `/__script?name=…` (`confirm`, `slow`, `compact`,
