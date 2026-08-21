@@ -37,9 +37,9 @@ first-turn behaviour across the eval matrix before anything caught it.
 
 ## Whole-layer seams
 
-Three layers are compared as a *set* rather than symbol by symbol, because that is how they
+Four layers are compared as a *set* rather than symbol by symbol, because that is how they
 drift: loom's **eval scenarios**, the Galaxy **tool surface** (vs `galaxy-mcp`), and the
-vendored **skills corpus**. Their certified upstream state lives in `registry.json` under
+vendored **skills corpus**, and **pi** — the agent loop olite's driver is a port of (`@earendil-works/pi-agent-core`, reached through loom's `node_modules`). Their certified upstream state lives in `registry.json` under
 `layers`, so `check.py` runs offline and in CI.
 
 Re-certifying is deliberate, never automatic:
@@ -56,3 +56,12 @@ anyone noticing.** That has already happened once here, to the prompt-block audi
 `ALLOWED_TOOL_DIVERGENCE` in `snapshot_layers.py` lists the tool differences forced by the
 browser architecture (no connection step, no local filesystem). Anything outside that list is
 reported. Each entry must stay justified in `orbit-faithfulness.md` §2h.
+
+### Why pi is in here
+
+olite's loop is a port of pi's, and pi is a moving third-party package. Before this it was
+the least watched component in the system: Orbit's own source had six enumerated layers while
+the loop everything runs on had a single one-off audit (`pi-loop-audit.md`) with no way to
+tell whether it still applied. The layer pins the version and fingerprints `agent-loop.js`,
+`agent.js` and `harness/agent-harness.js`, so a pi bump surfaces as **DRIFT — re-audit the
+loop** instead of going unnoticed.

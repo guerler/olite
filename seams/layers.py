@@ -69,3 +69,34 @@ def skills_manifest():
     for f in sorted(base.rglob("*.md")):
         files[str(f.relative_to(base))] = hashlib.sha256(f.read_bytes()).hexdigest()[:16]
     return {"repo": lock["repo"], "ref": lock["ref"], "sha": lock["sha"], "files": files}
+
+
+PI_TRACKED = ["dist/agent-loop.js", "dist/agent.js", "dist/harness/agent-harness.js"]
+
+
+def pi_core_root(loom_root):
+    # pi-agent-core as loom resolves it; it is nested under pi-coding-agent.
+    base = pathlib.Path(loom_root) / "node_modules/@earendil-works"
+    for cand in (
+        base / "pi-coding-agent/node_modules/@earendil-works/pi-agent-core",
+        base / "pi-agent-core",
+    ):
+        if (cand / "package.json").exists():
+            return cand
+    return None
+
+
+def pi_manifest(loom_root):
+    # Version pin plus a fingerprint per tracked loop file. olite's driver is a port of this
+    # loop, and it was the least watched component in the system: Orbit's own source got six
+    # enumerated layers, the agent loop it runs on got one off-line audit.
+    root = pi_core_root(loom_root)
+    if root is None:
+        return None
+    version = json.loads((root / "package.json").read_text())["version"]
+    files = {}
+    for rel in PI_TRACKED:
+        f = root / rel
+        if f.exists():
+            files[rel] = _fp(f.read_text(errors="replace"))
+    return {"package": "@earendil-works/pi-agent-core", "version": version, "files": files}

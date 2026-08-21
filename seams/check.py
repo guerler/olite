@@ -73,6 +73,21 @@ def check_layers(data):
             if skills["files"][f] != now["files"][f]:
                 out.append(("DRIFT", f"layer.skills/{f}", "vendored content edited locally"))
 
+    pi = data.get("pi") or {}
+    if pi.get("files") and LOOM.exists():
+        now = layers.pi_manifest(LOOM)
+        if now is None:
+            out.append(("MISSING", "layer.pi", "pi-agent-core not installed under loom"))
+        else:
+            if now["version"] != pi["version"]:
+                out.append(("DRIFT", "layer.pi",
+                            f"pi moved {pi['version']} -> {now['version']} — re-audit the loop"))
+            for f in sorted(set(pi["files"]) | set(now["files"])):
+                a, b = pi["files"].get(f), now["files"].get(f)
+                if a != b:
+                    out.append(("DRIFT", f"layer.pi/{f.split('/')[-1]}",
+                                "the loop olite ports has changed upstream"))
+
     surface = data.get("tool_surface") or {}
     if surface.get("upstream"):
         allowed = surface.get("allowed_divergence") or {}
@@ -142,6 +157,7 @@ def main():
         len((data.get("eval_scenarios") or {}).get("fingerprints") or {})
         + len((data.get("skills") or {}).get("files") or {})
         + len((data.get("tool_surface") or {}).get("upstream") or {})
+        + len((data.get("pi") or {}).get("files") or {})
     )
     print(f"\n{len(registry)} seams + {counted} layer entries checked, "
           f"{len(problems)} need attention")

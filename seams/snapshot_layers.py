@@ -42,6 +42,7 @@ def main():
             "fingerprints": layers.loom_scenarios(LOOM),
         },
         "skills": layers.skills_manifest(),
+        "pi": layers.pi_manifest(LOOM) or (existing.get("pi") or {}),
         "tool_surface": existing.get("tool_surface") or {},
     }
     if mcp_path:
@@ -55,7 +56,8 @@ def main():
     n = layer_data["tool_surface"].get("upstream") or {}
     print(
         f"certified: {len(layer_data['eval_scenarios']['fingerprints'])} loom scenarios, "
-        f"{len(layer_data['skills']['files'])} skill files, {len(n)} upstream tools"
+        f"{len(layer_data['skills']['files'])} skill files, {len(n)} upstream tools, "
+        f"pi {(layer_data.get('pi') or {}).get('version', '?')}"
     )
 
 

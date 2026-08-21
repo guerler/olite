@@ -471,6 +471,15 @@
         "workflow-reports/references/directives.md": "1b2fe9814c3c10be"
       }
     },
+    "pi": {
+      "package": "@earendil-works/pi-agent-core",
+      "version": "0.84.1",
+      "files": {
+        "dist/agent-loop.js": "3716c081aeadc2c7",
+        "dist/agent.js": "8baf1f05f827fd1b",
+        "dist/harness/agent-harness.js": "8ef43b802652dea3"
+      }
+    },
     "tool_surface": {
       "source": "galaxy_mcp",
       "allowed_divergence": {
