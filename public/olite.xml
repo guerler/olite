@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE visualization SYSTEM "../../visualization.dtd">
 <visualization name="olite" embeddable="true">
-    <description>Client-only Galaxy co-scientist (kill-gate spike)</description>
+    <description>Conversational assistant that plans and runs Galaxy analyses</description>
     <data_sources>
         <data_source>
             <model_class>HistoryDatasetAssociation</model_class>
@@ -67,11 +67,11 @@ task is complete, call finish with a one-line summary.
              add <ai_api_key> only if LiteLLM requires one. Remove this block to fall
              back to the Galaxy proxy (api/plugins/olite). -->
         <ai_api_base_url>/llm</ai_api_base_url>
-        <!-- The model Orbit documents for production (loom README: `--model
-             claude-sonnet-4-6`, and the same value in its config example). Orbit has
-             no hardcoded default — the model is per-provider config — so this tracks
-             what Orbit ships in its docs. In a real deployment Galaxy's
-             inference_services config wins; this is the dev-direct path. -->
+        <!-- The model Orbit documents for production: the `model` flag in loom's
+             README, and the same value in its config example. Orbit has no hardcoded
+             default (the model is per-provider config), so this tracks what Orbit
+             ships in its docs. In a real deployment Galaxy's inference_services
+             config wins; this is the dev-direct path. -->
         <ai_model>claude-sonnet-4-6</ai_model>
         <ui>
             <chat>true</chat>
@@ -83,15 +83,34 @@ task is complete, call finish with a one-line summary.
         </test>
     </tests>
     <help format="markdown"><![CDATA[
-# olite
+# What is olite?
 
-olite is a **client-only** Galaxy co-scientist delivered as a Charts visualization
-plugin. The agent loop runs entirely in the browser: it reaches the LLM through
-Galaxy's chat proxy, runs local Python in Pyodide, and orchestrates real Galaxy
-jobs through the Galaxy API. There is no per-user server container.
+olite is a conversational assistant that helps you plan and run analyses in Galaxy. You
+describe what you want in plain language, and it proposes a plan, shows you the parameters,
+and — once you approve — runs the Galaxy tools and workflows on your behalf.
 
-This build is the **kill-gate spike**: it proves a client-only loop can drive
-Pyodide plus Galaxy end to end. See the package README for how to run it and the
-GO / NO-GO criterion.
+After selecting a dataset, a chat panel opens alongside your history. Ask a question to get
+an answer, or ask for an analysis to get a plan you can review before anything runs.
+
+## Key Features
+
+- **Plan First, Run Second**: Multi-step analyses are drafted as a plan you approve, edit or
+  reject. Nothing is submitted to Galaxy until you say so.
+- **Parameter Review**: Before execution, every tool parameter is shown in a table you can
+  change, so there are no hidden defaults.
+- **Runs Real Galaxy Jobs**: Finds and runs installed tools, and can import and invoke
+  curated workflows from the Intergalactic Workflow Commission (IWC).
+- **Keeps a Record**: The plan, what was run, and what the results showed are written to a
+  Galaxy Page attached to your history, so the analysis stays readable and shareable.
+- **Watches Your Jobs**: Submitted jobs and workflow invocations are followed to completion
+  and reported back in the chat.
+- **Local Computation**: Quick calculations and data inspection run in your browser, without
+  creating Galaxy jobs.
+
+Everything runs in your browser using your own Galaxy session, so olite can only see and do
+what you can. No separate server or container is needed.
+
+To learn more about the Galaxy visualization framework, visit:
+[https://github.com/galaxyproject/galaxy-charts](https://github.com/galaxyproject/galaxy-charts)
 ]]></help>
 </visualization>
