@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "olite"
 version = "0.0.0"
 description = "olite agent brain (client-only Galaxy co-scientist)"
-dependencies = ["numpy", "pandas"]
+dependencies = ["numpy", "pandas", "pydantic", "PyYAML", "jsonschema"]
 readme = "README.md"
 requires-python = ">=3.7"
 license = "MIT"
