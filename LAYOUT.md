@@ -1,9 +1,15 @@
 # olite layout
 
-olite is a **client-only** Galaxy co-scientist delivered as a Charts visualization
-plugin. The agent runs entirely in the browser (Python brain inside Pyodide), uses
-Galaxy as compute + storage, and needs **no Galaxy Interactive Tool**. Goal: cover
-the same functionality as Orbit, without an IT.
+olite is a browser-native AI research assistant for Galaxy, delivered as a Charts
+visualization plugin. The agent runs entirely in the browser (Python brain inside
+Pyodide) and uses Galaxy as compute and storage, so no per-user Interactive Tool is
+required.
+
+Its agent behavior and interaction model are closely aligned with
+[Orbit](https://github.com/galaxyproject/loom), the original Galaxy AI co-scientist and
+the reference implementation used for olite's parity evaluation. The goal is to offer the
+same capabilities in a browser-native runtime; where the two differ it is because of that
+runtime, and every deliberate difference is recorded in the seam registry (`seams/`).
 
 This file is the code-level map. Paths below are relative to the repository root.
 
