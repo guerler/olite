@@ -110,7 +110,20 @@ an answer, or ask for an analysis to get a plan you can review before anything r
 Everything runs in your browser using your own Galaxy session, so olite can only see and do
 what you can. No separate server or container is needed.
 
-To learn more about the Galaxy visualization framework, visit:
-[https://github.com/galaxyproject/galaxy-charts](https://github.com/galaxyproject/galaxy-charts)
+## Built on Orbit
+
+olite is a browser-based sibling of **Orbit**, the AI co-scientist for Galaxy. Orbit is the
+original and the reference: the plan-and-approve workflow, the parameter review, the analysis
+record, and the skills olite draws on were all designed and built there. olite deliberately
+follows Orbit's behaviour, and where the two differ it is because a browser cannot do
+something a server-side tool can — not because a different design was preferred.
+
+Orbit runs as a Galaxy Interactive Tool, with a container per user and access to a shell.
+Choose Orbit when you need that; olite exists for cases where no per-user container is
+available.
+
+- Orbit: [https://github.com/galaxyproject/loom](https://github.com/galaxyproject/loom)
+- Shared skills corpus: [https://github.com/galaxyproject/galaxy-skills](https://github.com/galaxyproject/galaxy-skills)
+- Galaxy visualization framework: [https://github.com/galaxyproject/galaxy-charts](https://github.com/galaxyproject/galaxy-charts)
 ]]></help>
 </visualization>
