@@ -62,13 +62,24 @@ def olite_tool_table():
 
 
 def skills_manifest():
-    """The vendored Orbit corpus: lock pin plus a hash per file."""
+    """The vendored Orbit corpus: lock pin plus a hash per file.
+
+    The corpus is a build artifact (`npm run build:skills`, gitignored); only
+    `skills.lock.json` is committed. `vendored` says whether it is present, so a checkout
+    that has not been built is not mistaken for a corpus someone deleted.
+    """
     lock = json.loads((ROOT / "skills.lock.json").read_text())
     base = ROOT / "brain/olite/registry/skills/galaxy-skills"
     files = {}
     for f in sorted(base.rglob("*.md")):
         files[str(f.relative_to(base))] = hashlib.sha256(f.read_bytes()).hexdigest()[:16]
-    return {"repo": lock["repo"], "ref": lock["ref"], "sha": lock["sha"], "files": files}
+    return {
+        "repo": lock["repo"],
+        "ref": lock["ref"],
+        "sha": lock["sha"],
+        "vendored": base.is_dir() and bool(files),
+        "files": files,
+    }
 
 
 PI_TRACKED = ["dist/agent-loop.js", "dist/agent.js", "dist/harness/agent-harness.js"]

@@ -64,14 +64,21 @@ def check_layers(data):
     skills = data.get("skills") or {}
     if skills.get("files"):
         now = layers.skills_manifest()
+        # The pin is committed, so it is checkable anywhere.
         if now["sha"] != skills["sha"]:
             out.append(("DRIFT", "layer.skills",
                         f"vendored pin moved {skills['sha'][:12]} -> {now['sha'][:12]}"))
-        for f in sorted(set(skills["files"]) ^ set(now["files"])):
-            out.append(("DRIFT", f"layer.skills/{f}", "vendored file added or removed"))
-        for f in sorted(set(skills["files"]) & set(now["files"])):
-            if skills["files"][f] != now["files"][f]:
-                out.append(("DRIFT", f"layer.skills/{f}", "vendored content edited locally"))
+        # The corpus itself is a build artifact. An unbuilt checkout has nothing to compare,
+        # which is not the same as a corpus that was edited or deleted.
+        if not now["vendored"]:
+            print("note: skills corpus not vendored (run `npm run build:skills`) — "
+                  "pin checked, file contents not\n")
+        else:
+            for f in sorted(set(skills["files"]) ^ set(now["files"])):
+                out.append(("DRIFT", f"layer.skills/{f}", "vendored file added or removed"))
+            for f in sorted(set(skills["files"]) & set(now["files"])):
+                if skills["files"][f] != now["files"][f]:
+                    out.append(("DRIFT", f"layer.skills/{f}", "vendored content edited locally"))
 
     pi = data.get("pi") or {}
     if pi.get("files") and LOOM.exists():

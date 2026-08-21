@@ -403,6 +403,7 @@
       "repo": "galaxyproject/galaxy-skills",
       "ref": "main",
       "sha": "3f69f4cb2ba45627b763c5f5fbc3a84b018177ea",
+      "vendored": true,
       "files": {
         "AGENTS.md": "49993ebdf047b67e",
         "CONTRIBUTING.md": "714bc23dfd93a1a5",
