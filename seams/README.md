@@ -53,6 +53,19 @@ against it. Until it is run, the checker holds the project to the last certifica
 is the point: **an audit conclusion that is not a check that runs will go stale without
 anyone noticing.** That has already happened once here, to the prompt-block audit.
 
+### The skills corpus is a build artifact
+
+`brain/olite/registry/skills/galaxy-skills/` is fetched by `npm run build:skills` and is
+gitignored; only `skills.lock.json` is committed. So the two halves of that layer are checked
+independently:
+
+- **the pin** — always, from the committed lock file, anywhere;
+- **the file contents** — only when the corpus is actually vendored.
+
+A checkout that has not been built reports a note and passes. That distinction matters: an
+unbuilt tree is not the same as a corpus someone edited or deleted, and conflating them made
+CI report all 65 files as drift on its first run.
+
 `ALLOWED_TOOL_DIVERGENCE` in `snapshot_layers.py` lists the tool differences forced by the
 browser architecture (no connection step, no local filesystem). Anything outside that list is
 reported. Each entry must stay justified in `orbit-faithfulness.md` §2h.
