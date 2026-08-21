@@ -115,20 +115,22 @@ for. Without a loom checkout it skips the upstream comparisons and still runs th
 
 - No local shell or filesystem — Galaxy is the OS, and `run_python` is Pyodide only.
 - No server-side brain, and no per-user container. Orbit's Interactive Tool provides both;
-  olite is for deployments where a container per user is not available.
+  olite runs browser-native within a Galaxy session instead.
 
 ## Credit
 
 Its agent behavior and interaction model are closely aligned with Orbit, the original Galaxy
 AI co-scientist and the reference implementation used for olite's parity evaluation. Several
 core concepts—including plan-and-approve, parameter review, the analysis record, and
-skills—were adopted directly from Orbit. olite reimplements these concepts for a
+skills—were adapted directly from Orbit. olite reimplements these concepts for a
 browser-native runtime integrated with Galaxy, with differences arising primarily from the
 capabilities and constraints of that environment.
 
 Orbit runs as a Galaxy Interactive Tool, with a container per user and access to a shell.
-olite exists for deployments where that is not available; the two are complementary, and
-every deliberate difference is recorded rather than assumed.
+Choose Orbit when you need shell access or a per-user container; olite provides a
+browser-native alternative that runs directly within a Galaxy session.
+
+Every deliberate difference is recorded rather than assumed.
 
 - Orbit: [github.com/galaxyproject/loom](https://github.com/galaxyproject/loom)
 - Shared skills corpus:

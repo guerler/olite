@@ -115,13 +115,13 @@ what you can. No separate server or container is needed.
 olite is a browser-native AI research assistant for Galaxy. Its agent behavior and
 interaction model are closely aligned with Orbit, the original Galaxy AI co-scientist and the
 reference implementation used for olite's parity evaluation. Several core concepts—including
-plan-and-approve, parameter review, the analysis record, and skills—were adopted directly from
+plan-and-approve, parameter review, the analysis record, and skills—were adapted directly from
 Orbit. olite reimplements these concepts for a browser-native runtime integrated with Galaxy,
 with differences arising primarily from the capabilities and constraints of that environment.
 
 Orbit runs as a Galaxy Interactive Tool, with a container per user and access to a shell.
-Choose Orbit when you need that; olite exists for cases where no per-user container is
-available.
+Choose Orbit when you need shell access or a per-user container; olite provides a
+browser-native alternative that runs directly within a Galaxy session.
 
 - Orbit: [https://github.com/galaxyproject/loom](https://github.com/galaxyproject/loom)
 - Shared skills corpus: [https://github.com/galaxyproject/galaxy-skills](https://github.com/galaxyproject/galaxy-skills)
