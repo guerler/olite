@@ -97,6 +97,14 @@
       "envRequires": [
         "JETSTREAM2_KEY"
       ]
+    },
+    {
+      "id": "or-ox-alpha",
+      "provider": "openrouter",
+      "model": "stealth/ox-alpha",
+      "envRequires": [
+        "OPENROUTER_KEY"
+      ]
     }
   ]
 }
