@@ -121,3 +121,6 @@ Not a correctness oracle. `mentionsOneOf` checks that a plan names a plausible t
 for the assay, not that the analysis is right — loom leaves that to a judge layer and
 so does this. And the suite says nothing about execution: every scenario stops at or
 before approval, so nothing here exercises a real Galaxy job.
+
+Running the **loom side** of the comparison has its own traps (auth, a disconnected
+Galaxy, a results file that overwrites itself) — see [comparison/README.md](comparison/README.md).
