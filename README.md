@@ -1,9 +1,13 @@
 # olite
 
-**olite** is a **client-only** Galaxy co-scientist delivered as a Charts visualization
-plugin. The agent loop runs entirely in the browser: it reaches the LLM through Galaxy's
-chat proxy, runs local Python in Pyodide, and orchestrates real Galaxy jobs through the
-Galaxy API. There is no per-user server container.
+**olite** is a browser-native AI research assistant for Galaxy, delivered as a Charts
+visualization plugin. The agent loop runs entirely in the browser: it reaches the LLM through
+Galaxy's chat proxy, runs local Python in Pyodide, and orchestrates real Galaxy jobs through
+the Galaxy API. There is no per-user server container.
+
+Its agent behavior and interaction model are closely aligned with
+[Orbit](https://github.com/galaxyproject/loom), the original Galaxy AI co-scientist and the
+reference implementation used for olite's parity evaluation — see [Credit](#credit).
 
 ## Architecture
 
@@ -97,15 +101,40 @@ a production install needs the registration.
 ```bash
 npm test                 # vitest + pytest
 npx tsc --noEmit
+npm run seams            # Orbit parity: drift, missing symbols, unanchored prompt text
 ```
+
+`npm run seams` checks olite against Orbit's source: prompt blocks and their emit conditions,
+loom's eval scenarios, the Galaxy tool surface, the vendored skills corpus, and the pi agent
+loop. It reports **DRIFT** when Orbit changes upstream, **MISSING** when a symbol disappears
+on either side, and **ORPHAN** when olite carries prompt text that no Orbit anchor accounts
+for. Without a loom checkout it skips the upstream comparisons and still runs the rest. See
+[`seams/README.md`](./seams/README.md). CI runs all four on every push and pull request.
 
 ## Scope
 
 - No local shell or filesystem — Galaxy is the OS, and `run_python` is Pyodide only.
-- No server-side brain, and no per-user container. That is the GxIT shape olite replaces.
+- No server-side brain, and no per-user container. Orbit's Interactive Tool provides both;
+  olite is for deployments where a container per user is not available.
 
 ## Credit
 
-olite reuses the design and assets of **Orbit** / **Loom** (the co-scientist brain) and the
-`vintent` / `polaris` Charts plugins (Pyodide substrate). It is a re-target of that work to
-a client-only Charts plugin, not a replacement.
+Its agent behavior and interaction model are closely aligned with Orbit, the original Galaxy
+AI co-scientist and the reference implementation used for olite's parity evaluation. Several
+core concepts—including plan-and-approve, parameter review, the analysis record, and
+skills—were adopted directly from Orbit. olite reimplements these concepts for a
+browser-native runtime integrated with Galaxy, with differences arising primarily from the
+capabilities and constraints of that environment.
+
+Orbit runs as a Galaxy Interactive Tool, with a container per user and access to a shell.
+olite exists for deployments where that is not available; the two are complementary, and
+every deliberate difference is recorded rather than assumed.
+
+- Orbit: [github.com/galaxyproject/loom](https://github.com/galaxyproject/loom)
+- Shared skills corpus:
+  [github.com/galaxyproject/galaxy-skills](https://github.com/galaxyproject/galaxy-skills)
+- Galaxy visualization framework:
+  [github.com/galaxyproject/galaxy-charts](https://github.com/galaxyproject/galaxy-charts)
+
+The Pyodide substrate (`substrate/`) is adopted from the `vintent` / `polaris` Charts
+plugins.
