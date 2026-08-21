@@ -34,3 +34,25 @@ loses *when loom says it* — and an instruction detached from its trigger reads
 advice. That is not hypothetical: "read the bound history" is resume-only in loom, was
 recorded without its trigger, and landed in olite as advice for every plan. It changed
 first-turn behaviour across the eval matrix before anything caught it.
+
+## Whole-layer seams
+
+Three layers are compared as a *set* rather than symbol by symbol, because that is how they
+drift: loom's **eval scenarios**, the Galaxy **tool surface** (vs `galaxy-mcp`), and the
+vendored **skills corpus**. Their certified upstream state lives in `registry.json` under
+`layers`, so `check.py` runs offline and in CI.
+
+Re-certifying is deliberate, never automatic:
+
+```bash
+python3 seams/snapshot_layers.py --mcp <path>/galaxy_mcp/server.py
+```
+
+Run that only after actually reading what changed upstream and deciding olite is correct
+against it. Until it is run, the checker holds the project to the last certification — which
+is the point: **an audit conclusion that is not a check that runs will go stale without
+anyone noticing.** That has already happened once here, to the prompt-block audit.
+
+`ALLOWED_TOOL_DIVERGENCE` in `snapshot_layers.py` lists the tool differences forced by the
+browser architecture (no connection step, no local filesystem). Anything outside that list is
+reported. Each entry must stay justified in `orbit-faithfulness.md` §2h.

@@ -17,6 +17,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import extract  # noqa: E402
+import layers  # noqa: E402
 
 LOOM = pathlib.Path(os.environ.get("LOOM_ROOT", pathlib.Path.home() / "loom"))
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -33,6 +34,63 @@ def olite_prompt_symbols():
     consts = re.findall(r'^([A-Z][A-Z_0-9]{2,}) = (?:"""|\'\'\')', text, re.M)
     builders = re.findall(r"^def ([a-z_]+_block)\(", text, re.M)
     return set(consts) | set(builders)
+
+
+def check_layers(data):
+    """The three whole-layer seams. Certified state lives in the registry, so this is offline."""
+    out = []
+    if not data:
+        return out
+
+    scen = (data.get("eval_scenarios") or {}).get("fingerprints") or {}
+    if scen:
+        try:
+            now = layers.loom_scenarios(LOOM)
+        except OSError:
+            now = None
+        if now is None:
+            out.append(("MISSING", "layer.eval-scenarios", f"loom not readable at {LOOM}"))
+        else:
+            for name in sorted(set(now) - set(scen)):
+                out.append(("DRIFT", f"layer.eval-scenarios/{name}",
+                            "loom added a scenario olite has never considered"))
+            for name in sorted(set(scen) - set(now)):
+                out.append(("DRIFT", f"layer.eval-scenarios/{name}", "loom removed this scenario"))
+            for name in sorted(set(scen) & set(now)):
+                if scen[name] != now[name]:
+                    out.append(("DRIFT", f"layer.eval-scenarios/{name}",
+                                "loom changed this scenario -- re-read it, then re-certify"))
+
+    skills = data.get("skills") or {}
+    if skills.get("files"):
+        now = layers.skills_manifest()
+        if now["sha"] != skills["sha"]:
+            out.append(("DRIFT", "layer.skills",
+                        f"vendored pin moved {skills['sha'][:12]} -> {now['sha'][:12]}"))
+        for f in sorted(set(skills["files"]) ^ set(now["files"])):
+            out.append(("DRIFT", f"layer.skills/{f}", "vendored file added or removed"))
+        for f in sorted(set(skills["files"]) & set(now["files"])):
+            if skills["files"][f] != now["files"][f]:
+                out.append(("DRIFT", f"layer.skills/{f}", "vendored content edited locally"))
+
+    surface = data.get("tool_surface") or {}
+    if surface.get("upstream"):
+        allowed = surface.get("allowed_divergence") or {}
+        mine = layers.olite_tool_table()
+        theirs = surface["upstream"]
+        for name in sorted(set(theirs) - set(mine)):
+            if name not in allowed:
+                out.append(("MISSING", f"layer.tool-surface/{name}",
+                            "galaxy-mcp exposes this tool and olite does not"))
+        for name in sorted(set(mine) - set(theirs)):
+            if name not in allowed:
+                out.append(("ORPHAN", f"layer.tool-surface/{name}",
+                            "olite exposes a tool galaxy-mcp does not -- label it ADDED"))
+        for name in sorted(set(mine) & set(theirs)):
+            if mine[name] != theirs[name] and name not in allowed:
+                out.append(("DRIFT", f"layer.tool-surface/{name}",
+                            "description or parameters differ from galaxy-mcp"))
+    return out
 
 
 def main():
@@ -63,6 +121,8 @@ def main():
             if extract.py_symbol(text, olite_meta["symbol"]) is None:
                 problems.append(("MISSING", row["id"], f"olite symbol gone: {olite_meta['symbol']}"))
 
+    problems += check_layers(json.loads((ROOT / "seams/registry.json").read_text()).get("layers") or {})
+
     anchored = {r["olite"]["symbol"] for r in registry if r.get("olite")}
     for name in sorted(olite_prompt_symbols() - anchored):
         problems.append(("ORPHAN", f"prompt.{name}",
@@ -70,7 +130,14 @@ def main():
 
     for kind, seam, detail in problems:
         print(f"{kind:8s} {seam:48s} {detail}")
-    print(f"\n{len(registry)} seams checked, {len(problems)} need attention")
+    data = json.loads((ROOT / "seams/registry.json").read_text()).get("layers") or {}
+    counted = (
+        len((data.get("eval_scenarios") or {}).get("fingerprints") or {})
+        + len((data.get("skills") or {}).get("files") or {})
+        + len((data.get("tool_surface") or {}).get("upstream") or {})
+    )
+    print(f"\n{len(registry)} seams + {counted} layer entries checked, "
+          f"{len(problems)} need attention")
     return 1 if problems else 0
 
 
