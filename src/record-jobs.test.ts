@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyJobOutcome } from "./record-jobs";
+import { applyJobOutcome, noteSubmitted } from "./record-jobs";
 
 const RECORD = `## Record
 
@@ -52,5 +52,33 @@ describe("applyJobOutcome", () => {
 
     it("does nothing to an empty record", () => {
         expect(applyJobOutcome("", ok("d071e794759ab192"))).toBe("");
+    });
+});
+
+describe("noteSubmitted", () => {
+    const base = "## Record\n\nSome prose from the agent.\n\n```olite-session\nid: x\n```\n";
+
+    it("adds a pending entry keyed by the id the shell observed", () => {
+        const out = noteSubmitted(base, { id: "417e33144b294c21", kind: "invocation" });
+        expect(out).toContain("- [ ] Workflow invocation `417e33144b294c21` — submitted");
+    });
+
+    it("keeps the session block last", () => {
+        const out = noteSubmitted(base, { id: "417e33144b294c21", kind: "invocation" });
+        expect(out.indexOf("417e33144b294c21")).toBeLessThan(out.indexOf("```olite-session"));
+    });
+
+    it("does not duplicate an id the agent already wrote", () => {
+        const withId = base.replace("Some prose", "Invocation `417e33144b294c21` per the agent");
+        expect(noteSubmitted(withId, { id: "417e33144b294c21", kind: "invocation" })).toBe(withId);
+    });
+
+    it("pairs with applyJobOutcome so the entry it writes can later be advanced", () => {
+        const submitted = noteSubmitted(base, { id: "417e33144b294c21", kind: "invocation" });
+        const done = applyJobOutcome(submitted, {
+            id: "417e33144b294c21", kind: "invocation", state: "scheduled", failed: false,
+        });
+        expect(done).toContain("- [x] Workflow invocation");
+        expect(done).toContain("Status: finished (scheduled)");
     });
 });

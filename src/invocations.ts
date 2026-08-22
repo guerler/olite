@@ -59,6 +59,8 @@ export interface WatcherOptions {
     onSettled: (w: Watched, state: string) => void;
     /** Called when a watched item changes state without settling. */
     onProgress?: (w: Watched, state: string) => void;
+    /** Called once when work is first observed, before anything is known about its fate. */
+    onSubmitted?: (w: Watched) => void;
     intervalMs?: number;
 }
 
@@ -78,6 +80,7 @@ export class InvocationWatcher {
             // Re-submitting the same id must not double-report it.
             if (!this.watching.has(key)) {
                 this.watching.set(key, w);
+                if (this.opts.onSubmitted) this.opts.onSubmitted(w);
             }
         }
         this.ensureRunning();

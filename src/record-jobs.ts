@@ -64,3 +64,28 @@ export function applyJobOutcome(content: string, outcome: JobOutcome): string {
     }
     return lines.join("\n");
 }
+
+
+/**
+ * Note submitted work in the record, keyed by the id the shell observed.
+ *
+ * loom has `galaxy_invocation_record({ invocationId, ... })`: the agent hands the poller the
+ * id and the poller owns the entry from then on. olite's watcher already holds the correct
+ * id -- it took it from the tool result -- so the shell writes the entry itself rather than
+ * trusting the model to transcribe a hex string. A live run wrote the invocation's `uuid`
+ * where Galaxy's `id` was needed, which left the record unmatchable and the poller unable to
+ * advance anything.
+ */
+export function noteSubmitted(content: string, w: { id: string; kind: "job" | "invocation" }): string {
+    if (content.includes(w.id)) return content;
+    const what = w.kind === "invocation" ? "Workflow invocation" : "Galaxy job";
+    const entry = `- [ ] ${what} \`${w.id}\` — submitted, awaiting completion`;
+    const lines = content.split("\n");
+
+    // Keep the session block last; it is the shell's own footer.
+    const fence = lines.findIndex((l) => l.trim().startsWith("```olite-session"));
+    const at = fence < 0 ? lines.length : fence;
+    const pad = at > 0 && lines[at - 1].trim() !== "" ? ["", entry, ""] : [entry, ""];
+    lines.splice(at, 0, ...pad);
+    return lines.join("\n");
+}

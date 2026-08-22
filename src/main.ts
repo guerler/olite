@@ -1,7 +1,7 @@
 /** olite shell: mounts Orbit's ChatPanel, boots the Pyodide brain, drives the chat. */
 import "./orbit/styles.css";
 import { editRecord } from "./record-write";
-import { applyJobOutcome } from "./record-jobs";
+import { applyJobOutcome, noteSubmitted } from "./record-jobs";
 import { ChatPanel } from "./orbit/chat/chat-panel";
 import { applyOrbitTheme } from "./orbit/theme";
 import { parseIncoming } from "./incoming";
@@ -158,6 +158,16 @@ async function main() {
     // Advances submitted Galaxy work between turns, so no turn blocks on a job.
     const watcher = new InvocationWatcher({
         readState: galaxyStateReader(config.galaxy_root, credentials),
+        // loom's agent calls galaxy_invocation_record so the poller owns the entry. olite's
+        // watcher already holds the id from the tool result, so the shell writes it -- a live
+        // run recorded an invocation's uuid where Galaxy's id was needed, and nothing matched.
+        onSubmitted: (w) => {
+            if (!config.history_id) return;
+            void editRecord(
+                { root: config.galaxy_root, credentials, historyId: config.history_id },
+                (content) => noteSubmitted(content, w),
+            );
+        },
         onSettled: (w, state) => {
             const what = w.kind === "invocation" ? "Workflow invocation" : "Galaxy job";
             const failed = isFailure(w.kind, state);
