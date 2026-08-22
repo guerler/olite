@@ -39,8 +39,9 @@ run_user_tool, not run_tool.
 Pages are Galaxy-flavored markdown documents: a history-attached page is a "Notebook",
 a standalone page a "Report". Manage them with list_pages / get_page / create_page /
 update_page. Page content embeds datasets through directives that use ENCODED ids
-(e.g. history_dataset_display(history_dataset_id=f2db41e1fa331b3e)), which you get from
-get_history_contents / get_dataset_details.
+(e.g. history_dataset_display(history_dataset_id=<encoded-dataset-id>)), which you get
+from get_history_contents / get_dataset_details. Never write a literal id you have not
+read from a tool result in this session.
 
 Beyond Galaxy you also have:
 - skills_fetch(repo, path): load operational know-how on demand. The "Skills

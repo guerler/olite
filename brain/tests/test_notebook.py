@@ -199,3 +199,54 @@ def test_the_excerpt_names_the_bound_history():
     assert HISTORY in text
     assert "bound to" in text
     assert f'history_id="{HISTORY}"' in text
+
+
+def test_the_binding_block_lists_the_history_datasets():
+    """Two live runs wrote a wrong *input* id and two prompt edits did not stop it, so the
+    shell states the ids it already knows instead of asking the model to recall them."""
+    import asyncio
+
+    class G:
+        async def get(self, path, params=None):
+            if path.endswith("/p1"):
+                return {"id": "p1", "content": "## Record"}
+            if "pages" in path:
+                return [{"id": "p1", "slug": notebook.slug_for_history("h1")}]
+            if "contents" in path:
+                return [
+                    {"id": "aaaa000000000001", "name": "reads.fastq", "extension": "fastq",
+                     "state": "ok", "visible": True},
+                    {"id": "aaaa000000000002", "name": "deleted", "extension": "tabular",
+                     "state": "ok", "deleted": True, "visible": True},
+                    {"id": "aaaa000000000003", "name": "hidden", "extension": "tabular",
+                     "state": "ok", "visible": False},
+                ]
+            return {}
+
+    out = asyncio.run(notebook.excerpt(G(), "h1"))
+
+    assert "## Datasets in this history" in out
+    assert "aaaa000000000001" in out, "a live dataset must be listed"
+    assert "aaaa000000000002" not in out, "deleted datasets are not inputs"
+    assert "aaaa000000000003" not in out, "hidden datasets are not offered either"
+    assert "Use these ids verbatim" in out
+
+
+def test_the_binding_block_survives_a_history_it_cannot_list():
+    """A failed contents call must not cost the binding block itself."""
+    import asyncio
+
+    class G:
+        async def get(self, path, params=None):
+            if "contents" in path:
+                raise RuntimeError("galaxy said no")
+            if path.endswith("/p1"):
+                return {"id": "p1", "content": "## Record"}
+            if "pages" in path:
+                return [{"id": "p1", "slug": notebook.slug_for_history("h1")}]
+            return {}
+
+    out = asyncio.run(notebook.excerpt(G(), "h1"))
+
+    assert "## Galaxy binding" in out
+    assert "## Datasets in this history" not in out

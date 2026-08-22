@@ -366,3 +366,19 @@ def test_the_identifier_rule_covers_inputs_not_only_outputs():
 
     assert "applies to inputs as much as outputs" in text
     assert "get_history_contents" in text
+
+
+def test_no_prompt_block_ships_a_literal_galaxy_id():
+    """A concrete 16-hex example id in the identity prompt was copied verbatim into three
+    live analyses as the *input dataset*, in histories that did not contain it. loom ships
+    no such example. Placeholders only."""
+    import re
+    from pathlib import Path
+
+    text = prompt.system_text(model="m", provider="p")
+    assert not re.findall(r"\b[0-9a-f]{16}\b", text), "prompt blocks must not carry a literal id"
+
+    xml = Path(__file__).resolve().parents[2] / "public" / "olite.xml"
+    if xml.exists():
+        assert not re.findall(r"\b[0-9a-f]{16}\b", xml.read_text()), \
+            "the identity prompt in olite.xml must not carry a literal id either"

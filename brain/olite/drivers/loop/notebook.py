@@ -40,6 +40,48 @@ HEAD_MAX_CHARS = 2000
 TAIL_MAX_CHARS = 4000
 
 
+MANIFEST_MAX = 40
+
+
+async def _dataset_manifest(g, history_id):
+    """The bound history's datasets, id first, injected fresh every turn.
+
+    Two live runs wrote a *wrong input dataset id* -- a real id from elsewhere on the
+    server, recalled rather than looked up -- and two rounds of prompt wording did not stop
+    it. Asking the model to remember an opaque hex string is the wrong instrument. The shell
+    knows these ids, so it states them, and the model copies from the turn it is in.
+    """
+    try:
+        items = await g.get(
+            f"api/histories/{history_id}/contents",
+            params={"v": "dev", "keys": "id,hid,name,extension,state,deleted,visible"},
+        )
+    except Exception:
+        logger.debug("dataset manifest unavailable", exc_info=True)
+        return ""
+    if not isinstance(items, list):
+        return ""
+    rows = [
+        d for d in items
+        if isinstance(d, dict) and not d.get("deleted") and d.get("visible", True)
+    ]
+    if not rows:
+        return ""
+    lines = [
+        f"- `{d.get('id')}` -- {d.get('name')} ({d.get('extension')}, {d.get('state')})"
+        for d in rows[-MANIFEST_MAX:]
+    ]
+    more = "" if len(rows) <= MANIFEST_MAX else f"\n_(showing the {MANIFEST_MAX} most recent of {len(rows)})_"
+    return (
+        "## Datasets in this history\n\n"
+        "These are the current contents of the bound history, listed fresh this turn. "
+        "**Use these ids verbatim when naming an input dataset** -- do not recall an id from "
+        "earlier in the conversation, and do not use an id that is not in this list.\n\n"
+        + "\n".join(lines)
+        + more
+    )
+
+
 async def excerpt(g, history_id):
     """loom: buildNotebookExcerptBlock() + buildGalaxyPageBindingBlock(), over a Page."""
     if not history_id:
@@ -64,13 +106,15 @@ async def excerpt(g, history_id):
         elided = True
 
     note = "_(showing head + tail; middle elided)_\n\n" if elided else ""
+    manifest = await _dataset_manifest(g, history_id)
+    manifest_block = f"\n\n{manifest}" if manifest else ""
     return f"""## Galaxy binding
 
 This session is bound to **history `{history_id}`** and its record page
 `{page.get('id')}` (slug `{slug_for_history(history_id)}`). That history is the one the
 user is looking at. **Pass `history_id="{history_id}"` when you run a tool or invoke a
 workflow** -- omit it and Galaxy puts the outputs in a new history the user never opened,
-where they will not find them.
+where they will not find them.{manifest_block}
 
 ## The record (current contents)
 
