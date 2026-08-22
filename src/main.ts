@@ -1,5 +1,7 @@
 /** olite shell: mounts Orbit's ChatPanel, boots the Pyodide brain, drives the chat. */
 import "./orbit/styles.css";
+import { editRecord } from "./record-write";
+import { applyJobOutcome } from "./record-jobs";
 import { ChatPanel } from "./orbit/chat/chat-panel";
 import { applyOrbitTheme } from "./orbit/theme";
 import { parseIncoming } from "./incoming";
@@ -158,10 +160,19 @@ async function main() {
         readState: galaxyStateReader(config.galaxy_root, credentials),
         onSettled: (w, state) => {
             const what = w.kind === "invocation" ? "Workflow invocation" : "Galaxy job";
-            if (isFailure(w.kind, state)) {
+            const failed = isFailure(w.kind, state);
+            if (failed) {
                 chat.addErrorMessage(`${what} ${w.id} finished as ${state}.`);
             } else {
                 chat.addInfoMessage(`${what} ${w.id} finished (${state}). Ask me to check the results.`);
+            }
+            // loom's poller advances the notebook itself; do the same to the record, so a
+            // turn that ends before its jobs do does not leave the record claiming they run.
+            if (config.history_id) {
+                void editRecord(
+                    { root: config.galaxy_root, credentials, historyId: config.history_id },
+                    (content) => applyJobOutcome(content, { id: w.id, kind: w.kind, state, failed }),
+                );
             }
         },
     });

@@ -390,6 +390,12 @@ copying. If you do not have an id in a tool result, look it up or leave it out -
 that omits an id is recoverable, a record with a wrong one sends the reader to someone
 else's work with nothing to signal the error.
 
+**This applies to inputs as much as outputs.** The ids of datasets you *ran something on*
+are as easy to get wrong as the ids of what came back, and they are the ones most often
+recalled from earlier in the conversation. Before naming an input dataset, confirm its id
+from `get_history_contents` for the bound history in this turn. An id you have not seen in a
+tool result this turn is a guess, however familiar it looks.
+
 **Do not claim the record was updated unless `update_page` returned.** Calling
 `notebook_resume` binds the record; it does not write to it. If you did not call
 `update_page`, say plainly that the record is not yet updated -- never write "logged in the

@@ -357,3 +357,12 @@ def test_the_discipline_blocks_are_not_gated():
     for heading in ("## Operating discipline", "## Verification before completion",
                     "## Plans and the approval gate", "## The record"):
         assert heading in down, heading
+
+
+def test_the_identifier_rule_covers_inputs_not_only_outputs():
+    """The 2026-08-20 rule held only for ids that came back in a tool result; a live run
+    then wrote a wrong *input* id, which the rule did not cover."""
+    text = prompt.system_text()
+
+    assert "applies to inputs as much as outputs" in text
+    assert "get_history_contents" in text
